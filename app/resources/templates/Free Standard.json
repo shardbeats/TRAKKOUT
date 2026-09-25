@@ -1,0 +1,6 @@
+{
+  "name": "Free Standard",
+  "title": "[FREE] {{artist}} x {{artist2}} {{genre}} Type Beat - \"{{title}}\" |",
+  "description": "💰📥 Compra/Descarga este beat:\n{{purchase_url}}\n\n❌ PROHIBIDO distribuir/comercializar la obra hecha con este beat sin comprar una licencia. 🎹 Beats nuevos todas las semanas\n\n🎚️ BPM: {{bpm}}\n🎵 Key: {{key}}\n\nINSTRUMENTAL DE USO LIBRE PARA FINES NO LUCRATIVOS, NO MONETIZAR NI REGISTRAR EN PLATAFORMAS DIGITALES, SI USAS ESTA PISTA FAVOR DE DAR CRÉDITOS EN LA DESCRIPCIÓN O TITULO DE TU VIDEO.\n\n👤 IG: @{{producer}}",
+  "tags": "{{genre}}, {{title}}, {{artist}}, type beat, boombap, instrumental, free beat, @{{producer}}"
+}

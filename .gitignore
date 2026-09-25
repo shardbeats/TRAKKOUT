@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+logs/*.log
+*.mp4
+*.db
+history.db
+token.json
+client_secrets.json
+client_secret*.json
+!resources/client_secrets.EXAMPLE.json
+.idea/
+.vscode/
