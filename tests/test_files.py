@@ -39,9 +39,19 @@ def test_has_space_for_small_file(tmp_path: Path):
     assert target.is_dir()
 
 
-def test_has_space_for_invalid_path_returns_false():
-    # NUL is invalid on Windows and raises OSError inside disk_usage/mkdir.
-    assert has_space_for("nul:///:::invalid", 1024) is False
+def test_has_space_for_disk_error_returns_false(tmp_path: Path, monkeypatch):
+    # Simulate an unreadable drive: disk_usage raises OSError.
+    # (Mocked instead of a magic path so the test is OS-independent:
+    # e.g. "nul" is reserved on Windows but a legal name on Linux.)
+    import shutil
+
+    from app.utils import files as files_mod
+
+    def _boom(_path):
+        raise OSError("disk unavailable")
+
+    monkeypatch.setattr(shutil, "disk_usage", _boom)
+    assert files_mod.has_space_for(tmp_path, 1024) is False
 
 
 def test_is_audio_file_case_insensitive():
