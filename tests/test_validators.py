@@ -6,6 +6,7 @@ from pathlib import Path
 from app.utils.validators import (
     validate_audio_path,
     validate_image_path,
+    validate_trim,
     validate_youtube_metadata,
 )
 
@@ -77,3 +78,31 @@ def test_validate_youtube_metadata_tags_limit():
     result = validate_youtube_metadata("Title", tags=["x" * 501])
     assert result.ok is False
     assert "500" in result.message
+
+
+def test_validate_trim_ok_and_full():
+    assert validate_trim(30.0, 60.0, 200.0).ok is True
+    assert validate_trim(0.0, 0.0, 200.0).ok is True  # 0 end = full audio
+
+
+def test_validate_trim_ordering():
+    assert validate_trim(60.0, 30.0, 200.0).ok is False
+    assert validate_trim(60.0, 60.0, 200.0).ok is False
+
+
+def test_validate_trim_out_of_range():
+    assert validate_trim(250.0, 260.0, 200.0).ok is False
+    result = validate_trim(30.0, 999.0, 200.0)
+    assert result.ok is False
+    assert "exceeds" in result.message
+
+
+def test_validate_trim_too_short():
+    result = validate_trim(30.0, 30.2, 200.0)
+    assert result.ok is False
+    assert "short" in result.message.lower()
+
+
+def test_validate_trim_unknown_duration_checks_order_only():
+    assert validate_trim(30.0, 60.0, 0.0).ok is True
+    assert validate_trim(60.0, 30.0, 0.0).ok is False

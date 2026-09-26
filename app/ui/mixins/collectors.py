@@ -67,15 +67,96 @@ class CollectorsMixin:
         self.cb_format.blockSignals(True)
         self.cb_format.setCurrentIndex(1 if t in _VERTICAL_RES else 0)
         self.cb_format.blockSignals(False)
+        self._update_clip_visibility()
 
     def _on_format_changed(self, idx: int):
         res = "1080x1920" if idx == 1 else "1920x1080"
         self.cb_res.blockSignals(True)
         self.cb_res.setCurrentText(res)
         self.cb_res.blockSignals(False)
+        self._update_clip_visibility()
 
     def _on_resolution_changed(self, _text: str = ""):
         self._sync_format_to_resolution()
+
+    # ---------- Short clip (phase 1: numeric selection) ----------
+
+    def _update_clip_visibility(self):
+        """The Short Clip section only exists for 9:16 output."""
+        self.sec_clip.setVisible(self.cb_format.currentIndex() == 1)
+
+    def _clip_duration_known(self) -> float:
+        if self.audio_info is not None:
+            return max(0.0, self.audio_info.duration or 0.0)
+        return 0.0
+
+    def _reset_clip(self):
+        self.sp_trim_start.setValue(0.0)
+        self.sp_trim_end.setValue(self._clip_duration_known())
+        self._update_clip_info()
+
+    def _on_trim_spin_changed(self):
+        """Spinbox edit → move widget handles (silent) + refresh label."""
+        self.wave.set_range(float(self.sp_trim_start.value()),
+                            float(self.sp_trim_end.value()))
+        self._update_clip_info()
+
+    def _on_wave_range_changed(self, start: float, end: float):
+        """Widget drag → set spinboxes (signals blocked: no loop)."""
+        self.sp_trim_start.blockSignals(True)
+        self.sp_trim_end.blockSignals(True)
+        self.sp_trim_start.setValue(start)
+        self.sp_trim_end.setValue(end)
+        self.sp_trim_start.blockSignals(False)
+        self.sp_trim_end.blockSignals(False)
+        self._update_clip_info()
+
+    def _update_trim_range(self):
+        """Sync spinbox maximums with the loaded audio (call after probing).
+
+        Never wipes an existing selection: only a NEW audio file resets the
+        clip to full (note: generate re-probes the same file every time).
+        """
+        dur = self._clip_duration_known()
+        audio_path = self.ed_audio.text().strip()
+        for sp in (self.sp_trim_start, self.sp_trim_end):
+            sp.blockSignals(True)
+            sp.setMaximum(max(dur, 0.0))
+            sp.blockSignals(False)
+        if audio_path != self._trim_audio_path:
+            self._trim_audio_path = audio_path
+            self.sp_trim_start.blockSignals(True)
+            self.sp_trim_end.blockSignals(True)
+            self.sp_trim_start.setValue(0.0)
+            self.sp_trim_end.setValue(dur)
+            self.sp_trim_start.blockSignals(False)
+            self.sp_trim_end.blockSignals(False)
+        else:
+            if self.sp_trim_end.value() == 0.0 and dur > 0:
+                self.sp_trim_end.setValue(dur)
+            if self.sp_trim_start.value() > dur:
+                self.sp_trim_start.setValue(0.0)
+            if self.sp_trim_end.value() > dur:
+                self.sp_trim_end.setValue(dur)
+        self.wave.set_duration(dur)
+        self.wave.set_range(float(self.sp_trim_start.value()),
+                            float(self.sp_trim_end.value()))
+        self._update_clip_info()
+
+    def _update_clip_info(self):
+        from app.models.models import resolve_clip_range
+        from app.utils.formatting import fmt_hms
+        dur = self._clip_duration_known()
+        if dur <= 0:
+            self.lbl_clip_info.setText("Load an audio file to enable clipping.")
+            return
+        s, e = resolve_clip_range(self.sp_trim_start.value(),
+                                  self.sp_trim_end.value(), dur)
+        if e - s >= dur - 1e-6:
+            self.lbl_clip_info.setText(f"Full audio · {fmt_hms(dur)}")
+        else:
+            self.lbl_clip_info.setText(
+                f"Clip {fmt_hms(s)} – {fmt_hms(e)}  ({fmt_hms(e - s)} of {fmt_hms(dur)})")
 
     def _collect_video_settings(self) -> VideoSettings:
         res = self.cb_res.currentText()
@@ -84,7 +165,7 @@ class CollectorsMixin:
             width, height = int(w), int(h)
         except Exception:
             width, height = 1920, 1080
-        return VideoSettings(
+        vs = VideoSettings(
             width=width, height=height,
             fit_mode=self.cb_fit.currentText(),  # type: ignore[arg-type]
             blurred_background=self.ck_blur.isChecked(),
@@ -94,6 +175,12 @@ class CollectorsMixin:
             audio_format=self.cb_afmt.currentText(),  # type: ignore[arg-type]
             audio_bitrate=self.cb_abr.currentText(),
         )
+        # Short-clip selection only applies to vertical (Short) output.
+        # In 16:9 the spinboxes are hidden and ignored (full audio).
+        if vs.is_vertical:
+            vs.trim_start = float(self.sp_trim_start.value())
+            vs.trim_end = float(self.sp_trim_end.value())
+        return vs
 
     def _collect_overlay(self) -> OverlaySettings:
         vals = self._template_vals()

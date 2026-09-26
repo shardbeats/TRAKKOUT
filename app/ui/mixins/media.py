@@ -161,6 +161,8 @@ class MediaMixin:
                 self.beat.key = info.key
                 found.append(f"Key {info.key}")
             self._refresh_media_info()
+            self._update_trim_range()
+            self._request_waveform()
             if found:
                 self._set_status(f"Detected from filename: {', '.join(found)}.")
         except Exception as exc:
@@ -183,4 +185,42 @@ class MediaMixin:
         self.beat = BeatMetadata()
         self.audio_info = None; self.image_info = None
         self.lbl_cover_prev.clear()
+        self._trim_audio_path = ""
+        self._wave_audio_path = ""
+        self.sp_trim_start.setValue(0.0)
+        self.sp_trim_end.setValue(0.0)
+        self.wave.clear()
+        self._update_trim_range()
         self._refresh_media_info()
+
+    # ================= waveform =================
+
+    def _request_waveform(self):
+        """Decode peaks in the background (one worker per audio file)."""
+        from app.ui.workers import WaveformWorker
+        audio = self.ed_audio.text().strip()
+        if not audio or not Path(audio).is_file():
+            return
+        if audio == self._wave_audio_path and self.wave.has_peaks():
+            return
+        self._wave_audio_path = audio
+        self.wave.set_loading(True)
+        worker = WaveformWorker(self.ffmpeg, audio, parent=self)
+        worker.finished_ok.connect(lambda peaks, a=audio: self._on_waveform_ready(a, peaks))
+        worker.failed.connect(lambda msg, a=audio: self._on_waveform_failed(a, msg))
+        self.waveform_worker = worker
+        worker.start()
+
+    def _on_waveform_ready(self, audio: str, peaks: list):
+        if self.ed_audio.text().strip() != audio:
+            return  # stale: user already picked another file
+        dur = 0.0
+        if self.audio_info is not None and self.audio_info.path == audio:
+            dur = self.audio_info.duration or 0.0
+        self.wave.set_peaks(peaks, dur or self._clip_duration_known())
+
+    def _on_waveform_failed(self, audio: str, msg: str):
+        if self.ed_audio.text().strip() != audio:
+            return
+        log.warning("Waveform unavailable for %s: %s", audio, msg)
+        self.wave.set_loading(False)

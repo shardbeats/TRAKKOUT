@@ -60,3 +60,41 @@ def validate_youtube_metadata(title: str, description: str = "", tags: list[str]
     if len(" ".join(tags)) > 500:
         return ValidationResult(False, "Tags exceed the total limit (~500 characters). Remove some.")
     return ValidationResult(True, "Valid metadata.")
+
+
+#: Minimum clip length in seconds (matches the encoder floor in FFmpegService).
+MIN_CLIP_SECONDS = 0.5
+
+
+def validate_trim(start: float, end: float, duration: float) -> ValidationResult:
+    """Validate a Short-clip selection. ``end`` <= 0 means "to the end".
+
+    With an unknown duration (<= 0, file not probed) only the ordering
+    is checked; range checks need the real length.
+    """
+    total = max(0.0, float(duration or 0.0))
+    try:
+        s = max(0.0, float(start or 0.0))
+    except (TypeError, ValueError):
+        return ValidationResult(False, "Invalid clip start.")
+    try:
+        e = float(end or 0.0)
+    except (TypeError, ValueError):
+        return ValidationResult(False, "Invalid clip end.")
+    if e <= 0.0:
+        e = total
+    if total <= 0.0:
+        if e > 0.0 and e <= s:
+            return ValidationResult(False, "Clip end must be after clip start.")
+        return ValidationResult(True, "Valid clip.")
+    if s >= total:
+        return ValidationResult(False, "Clip start is beyond the audio length.")
+    if e <= s:
+        return ValidationResult(False, "Clip end must be after clip start.")
+    if e > total:
+        return ValidationResult(
+            False, f"Clip end ({e:.1f}s) exceeds the audio length ({total:.1f}s).")
+    if e - s < MIN_CLIP_SECONDS:
+        return ValidationResult(
+            False, f"Clip is too short (minimum {MIN_CLIP_SECONDS:g} s).")
+    return ValidationResult(True, "Valid clip.")

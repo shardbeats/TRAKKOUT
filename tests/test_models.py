@@ -10,6 +10,7 @@ from app.models.models import (
     QueueItem,
     VideoSettings,
     YouTubeMetadata,
+    resolve_clip_range,
 )
 
 
@@ -73,4 +74,34 @@ def test_channel_info_display():
 def test_queue_and_history_defaults():
     assert QueueItem().status == "Pending"
     assert QueueItem().privacy == "private"
+    assert QueueItem().trim_start == 0.0
+    assert QueueItem().trim_end == 0.0
     assert HistoryEntry().category_id == "10"
+    assert HistoryEntry().trim_start == 0.0
+    assert HistoryEntry().trim_end == 0.0
+
+
+def test_resolve_clip_range_full_by_default():
+    assert resolve_clip_range(0.0, 0.0, 200.0) == (0.0, 200.0)
+    assert resolve_clip_range(0.0, -5.0, 200.0) == (0.0, 200.0)
+
+
+def test_resolve_clip_range_clamps():
+    assert resolve_clip_range(30.0, 60.0, 200.0) == (30.0, 60.0)
+    assert resolve_clip_range(-10.0, 999.0, 200.0) == (0.0, 200.0)
+    assert resolve_clip_range(150.0, 100.0, 200.0) == (100.0, 100.0)
+
+
+def test_resolve_clip_range_garbage_input():
+    assert resolve_clip_range("", "", 200.0) == (0.0, 200.0)
+    assert resolve_clip_range(None, None, 0.0) == (0.0, 0.0)
+
+
+def test_video_settings_clip_helpers():
+    vs = VideoSettings(trim_start=30.0, trim_end=60.0)
+    assert vs.has_trim is True
+    assert vs.clip_range(200.0) == (30.0, 60.0)
+    assert vs.clip_duration(200.0) == 30.0
+    plain = VideoSettings()
+    assert plain.has_trim is False
+    assert plain.clip_duration(200.0) == 200.0

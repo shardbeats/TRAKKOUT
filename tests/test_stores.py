@@ -45,6 +45,20 @@ def test_history_migrates_old_schema(tmp_path: Path):
     # New columns exist with defaults.
     assert items[0].title == ""
     assert items[0].category_id == "10"
+    assert items[0].trim_start == 0.0
+    assert items[0].trim_end == 0.0
+
+
+def test_history_trim_roundtrip(tmp_path: Path):
+    store = HistoryStore(tmp_path / "history.db")
+    store.add(HistoryEntry(beat_name="Clip", status="Generated",
+                           trim_start=30.0, trim_end=60.0))
+    items = store.list()
+    assert items[0].trim_start == 30.0
+    assert items[0].trim_end == 60.0
+    items[0].trim_end = 45.0
+    store.update(items[0])
+    assert store.list()[0].trim_end == 45.0
 
 
 def test_queue_memory_crud():
@@ -82,6 +96,35 @@ def test_queue_persistence_normalizes_states(tmp_path: Path):
     assert by_name["inflight"].status == "Pending"
     assert by_name["ready-ok"].status == "Ready"
     assert by_name["ready-missing"].status == "Failed"
+
+
+def test_queue_migrates_old_schema_without_trim(tmp_path: Path):
+    db = tmp_path / "old_queue.db"
+    with sqlite3.connect(str(db)) as conn:
+        conn.execute(
+            "CREATE TABLE queue (id INTEGER PRIMARY KEY,"
+            " beat_name TEXT DEFAULT '', audio_path TEXT DEFAULT '',"
+            " status TEXT DEFAULT 'Pending')"
+        )
+        conn.execute("INSERT INTO queue (id, beat_name, status) VALUES (1, 'Old', 'Pending')")
+        conn.commit()
+
+    queue = QueueManager(db)
+    items = queue.all()
+    assert len(items) == 1
+    assert items[0].trim_start == 0.0
+    assert items[0].trim_end == 0.0
+
+
+def test_queue_trim_roundtrip(tmp_path: Path):
+    db = tmp_path / "queue.db"
+    queue = QueueManager(db)
+    queue.add(QueueItem(beat_name="Clip", trim_start=30.0, trim_end=60.0))
+    reloaded = QueueManager(db)
+    items = reloaded.all()
+    assert len(items) == 1
+    assert items[0].trim_start == 30.0
+    assert items[0].trim_end == 60.0
 
 
 def test_settings_roundtrip_and_unknown_keys_ignored(tmp_path: Path):

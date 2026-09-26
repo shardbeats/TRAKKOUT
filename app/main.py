@@ -51,6 +51,16 @@ def main() -> int:
     app.setApplicationName("TRAKKOUT")
     app.setOrganizationName("TRAKKOUT")
     try:
+        from PySide6.QtWidgets import QStyleFactory
+        if "Fusion" in QStyleFactory.keys():
+            # Native Windows styles compute identical hit rects for both
+            # spinbox arrows under stylesheets (up arrow never fires);
+            # Fusion is software-only and identical on every machine.
+            app.setStyle("Fusion")
+    except Exception as exc:
+        log.warning("Could not force Fusion style: %s", exc)
+    log.info("Qt style: %s", app.style().objectName())
+    try:
         from app.ui.theme import apply_theme
         apply_theme(app)
     except Exception as exc:

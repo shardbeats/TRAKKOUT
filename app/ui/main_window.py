@@ -28,6 +28,7 @@ from app.ui.mixins import (
     QueueHistoryMixin, TemplatesMixin, YouTubeAuthMixin,
 )
 from app.ui.sections import CollapsibleSection, Sidebar
+from app.ui.waveform import WaveformWidget
 from app.utils.scheduling import COMMON_TIMEZONES
 from app.youtube.auth import GoogleAuth
 from app.youtube.youtube_service import YouTubeService
@@ -71,8 +72,12 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
         self.ffmpeg_worker: FFmpegWorker | None = None
         self.upload_worker: UploadWorker | None = None
         self.batch_worker: QThread | None = None
+        self.waveform_worker: QThread | None = None
         self._op_start = 0.0
         self._op_total = 0.0
+        self._last_trim: tuple[float, float] = (0.0, 0.0)
+        self._trim_audio_path = ""
+        self._wave_audio_path = ""
 
         self.setWindowTitle("TRAKKOUT")
         self.resize(1180, 820)
@@ -239,6 +244,41 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
         vf.addWidget(self.ed_bg, 3, 4)
         self.sec_video.addLayout(vf)
         self.sections_layout.addWidget(self.sec_video)
+
+        # ---- Short Clip (only for 9:16 output; numeric in phase 1) ----
+        self.sec_clip = CollapsibleSection("Short Clip", icon="✂")
+        self._sections["clip"] = self.sec_clip
+        cf = QGridLayout()
+        self.wave = WaveformWidget()
+        self.wave.rangeChanged.connect(self._on_wave_range_changed)
+        cf.addWidget(self.wave, 0, 0, 1, 5)
+        cf.addWidget(QLabel("Start (s):"), 1, 0)
+        self.sp_trim_start = QDoubleSpinBox()
+        self.sp_trim_start.setDecimals(1)
+        self.sp_trim_start.setRange(0.0, 3600.0)
+        self.sp_trim_start.setSingleStep(1.0)
+        self.sp_trim_start.setSuffix(" s")
+        self.sp_trim_start.valueChanged.connect(lambda _v: self._on_trim_spin_changed())
+        cf.addWidget(self.sp_trim_start, 1, 1)
+        cf.addWidget(QLabel("End (s):"), 1, 2)
+        self.sp_trim_end = QDoubleSpinBox()
+        self.sp_trim_end.setDecimals(1)
+        self.sp_trim_end.setRange(0.0, 3600.0)
+        self.sp_trim_end.setSingleStep(1.0)
+        self.sp_trim_end.setSuffix(" s")
+        self.sp_trim_end.setSpecialValueText("End")
+        self.sp_trim_end.valueChanged.connect(lambda _v: self._on_trim_spin_changed())
+        cf.addWidget(self.sp_trim_end, 1, 3)
+        self.btn_clip_full = QPushButton("Full")
+        self.btn_clip_full.setToolTip("Reset to the full audio")
+        self.btn_clip_full.clicked.connect(self._reset_clip)
+        cf.addWidget(self.btn_clip_full, 1, 4)
+        self.lbl_clip_info = QLabel("Load an audio file to enable clipping.")
+        self.lbl_clip_info.setStyleSheet("color:#777;")
+        self.lbl_clip_info.setWordWrap(True)
+        cf.addWidget(self.lbl_clip_info, 2, 0, 1, 5)
+        self.sec_clip.addLayout(cf)
+        self.sections_layout.addWidget(self.sec_clip)
 
         # ---- Texto / Overlay ----
         self.sec_texto = CollapsibleSection("Text / Overlay", icon="T")
@@ -521,6 +561,11 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
             if self.ffmpeg_worker and self.ffmpeg_worker.isRunning():
                 self.ffmpeg_worker.cancel()
                 self.ffmpeg_worker.wait(3000)
+        except Exception:
+            pass
+        try:
+            if self.waveform_worker and self.waveform_worker.isRunning():
+                self.waveform_worker.wait(3000)
         except Exception:
             pass
         super().closeEvent(event)
