@@ -37,7 +37,7 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 - **Operating System**: Windows 10/11 (64-bit)
 - **Processor**: Intel Core i5 or equivalent
 - **RAM**: 8 GB minimum, 16 GB recommended
-- **Disk Space**: 20 MB margin + audio/artwork file size
+- **Disk Space**: 2 GB MB margin + audio/artwork file size
 - **Python**: 3.11+ (with `Add to PATH` enabled)
 - **FFmpeg/FFprobe**: Installed locally or configurable via menu
 
