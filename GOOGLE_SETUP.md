@@ -13,8 +13,8 @@ Estimated time: 15–20 minutes. Cost: 0 (free tier).
 - The app does **not** upload through a shared account: it opens your browser, Google
   asks for permission, and stores a token **on your PC**:
   `%APPDATA%\TRAKKOUT\token.json`.
-- For that it needs a `client_secrets.json` of **yours**, which you'll create below
-  and place at `%APPDATA%\TRAKKOUT\client_secrets.json`.
+- For that it needs an OAuth client JSON of **yours**, which you'll create below
+  and drop into `%APPDATA%\TRAKKOUT\` (any `client_secret*.json` name works).
 - Scopes the app requests: `youtube.upload` and `youtube`.
 - During login the app listens on `http://localhost:8765` (local port,
   no router changes needed; if another program uses that port,
@@ -67,8 +67,10 @@ Estimated time: 15–20 minutes. Cost: 0 (free tier).
 
 1. On Windows, open `%APPDATA%\TRAKKOUT\` (paste it in the Explorer
    address bar). If it doesn't exist, create the folder or open the app once.
-2. Copy the downloaded JSON there with the exact name:
-   **`client_secrets.json`** (lowercase, no `-copy`, no `(1)`).
+2. Copy the downloaded JSON there as-is: Google names it something like
+   `client_secret_<id>.apps.googleusercontent.com.json` and the app detects
+   it automatically (renaming it to `client_secrets.json` also works,
+   and wins if there are several).
 3. Check it starts with `{"installed": ...` (Desktop), not `{"web"`.
 
 ## 6. Connect from the app
@@ -98,7 +100,7 @@ Estimated time: 15–20 minutes. Cost: 0 (free tier).
 
 | What you see | Cause | Fix |
 |---|---|---|
-| `client_secrets.json not found` | Wrong name/path | Must be exactly `%APPDATA%\TRAKKOUT\client_secrets.json` |
+| `OAuth client JSON not found` | No `client_secret*.json` in the folder | Drop the downloaded JSON into `%APPDATA%\TRAKKOUT\` |
 | `not valid JSON` / no `installed` section | Wrong JSON | Re-download the **Desktop app** client (step 4) |
 | `access_denied` / 403 error on login | Your email is not in Test users | Step 3.5: add it and retry |
 | *"Google hasn't verified this app"* | Normal in Testing | Advanced → Go to TRAKKOUT → Continue |

@@ -35,33 +35,70 @@ def _require_google_libs():
             ) from exc
 
 
+def _has_oauth_section(data: object) -> bool:
+    return isinstance(data, dict) and ("installed" in data or "web" in data)
+
+
+def find_client_secrets_file(search_dir: str | Path) -> Path | None:
+    """Locate the OAuth client JSON in the app data dir.
+
+    Google downloads it with names like
+    ``client_secret_<id>.apps.googleusercontent.com.json``, so renaming to
+    ``client_secrets.json`` is optional: the exact name wins when present,
+    otherwise the first structurally valid ``client_secret*.json`` is used.
+    """
+    directory = Path(search_dir)
+    exact = directory / "client_secrets.json"
+    if exact.is_file():
+        return exact
+    for candidate in sorted(directory.glob("client_secret*.json")):
+        if candidate == exact or not candidate.is_file():
+            continue
+        try:
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if _has_oauth_section(data):
+            return candidate
+    return None
+
+
 class GoogleAuth:
-    """Manages client_secrets.json + token.json (with automatic refresh)."""
+    """Manages the OAuth client JSON + token.json (with automatic refresh)."""
 
     def __init__(self, client_secrets_path: str | Path, token_path: str | Path) -> None:
         self.client_secrets_path = Path(client_secrets_path)
         self.token_path = Path(token_path)
 
     # ---- state ----
+    def effective_secrets_path(self) -> Path:
+        """Configured path, or an auto-detected client_secret*.json next to it."""
+        if self.client_secrets_path.is_file():
+            return self.client_secrets_path
+        found = find_client_secrets_file(self.client_secrets_path.parent)
+        return found or self.client_secrets_path
+
     def validate_client_secrets(self) -> tuple[bool, str]:
-        p = self.client_secrets_path
-        if not p.exists():
+        p = self.effective_secrets_path()
+        if not p.is_file():
             return False, (
-                "client_secrets.json not found.\n"
-                f"Expected path: {p}\n\n"
+                "OAuth client JSON not found.\n"
+                f"Looked in: {p.parent}\n\n"
                 "Create OAuth credentials (Desktop app) in Google Cloud Console and "
-                "download the JSON under that name. See README section 5."
+                "drop the downloaded file there (any client_secret*.json name works; "
+                "renaming it to client_secrets.json is optional). "
+                "See README section 5."
             )
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
         except Exception as exc:
-            return False, f"client_secrets.json is not valid JSON: {exc}"
-        if "installed" not in data and "web" not in data:
+            return False, f"{p.name} is not valid JSON: {exc}"
+        if not _has_oauth_section(data):
             return False, (
-                "client_secrets.json has neither an 'installed' nor a 'web' section.\n"
+                f"{p.name} has neither an 'installed' nor a 'web' section.\n"
                 "Re-download 'Desktop app' OAuth credentials."
             )
-        return True, "client_secrets.json is valid."
+        return True, f"{p.name} is valid."
 
     def load_credentials(self):
         """Return valid Credentials (refreshing if needed) or None."""
@@ -106,7 +143,7 @@ class GoogleAuth:
         if not ok:
             raise OAuthConfigError(msg)
         try:
-            flow = InstalledAppFlow.from_client_secrets_file(str(self.client_secrets_path), SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(str(self.effective_secrets_path()), SCOPES)
             creds = flow.run_local_server(
                 port=REDIRECT_PORT,
                 open_browser=True,
@@ -114,7 +151,7 @@ class GoogleAuth:
                 include_granted_scopes="true",
             )
         except FileNotFoundError as exc:
-            raise OAuthConfigError(f"client_secrets.json not found: {exc}") from exc
+            raise OAuthConfigError(f"OAuth client JSON not found: {exc}") from exc
         except Exception as exc:
             text = str(exc).lower()
             if "cancel" in text or "access_denied" in text or "denied by user" in text:
