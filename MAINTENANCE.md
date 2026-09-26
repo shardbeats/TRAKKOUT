@@ -38,7 +38,7 @@ trakkout/
 ├── app/utils/beat_names.py  Title/BPM/key parser from the file name.
 ├── app/resources/templates/ Presets (Free Standard.json). Recreated if missing.
 ├── start.bat                One-click first-run setup + launch (Windows).
-├── build_exe.py + TRAKKOUT.spec  Portable recipe (PyInstaller, one-file, FFmpeg bundled).
+├── build_exe.py + TRAKKOUT.spec  Optional local exe build (PyInstaller, one-file).
 └── requirements.txt         Dependencies pinned by range (>=).
 ```
 
@@ -54,7 +54,7 @@ directly; always through `VideoGenerator`, `YouTubeService` and
 | Every 12 months | Test the full OAuth flow (connect → channels → private upload) | Google Cloud Console + app |
 | Every 12 months | Check YouTube Data API v3 deprecation notices | https://developers.google.com/youtube/v3/revision_history |
 | Every 12 months | Test against the latest stable FFmpeg | https://www.gyan.dev/ffmpeg/builds/ |
-| After every change | Rebuild the exe and test it in a clean folder | `build_exe.py` |
+| After every change | Run the test suite | `python -m pytest tests -q` + CI |
 | Always | Never commit `client_secret*.json`, `token.json`, `*.db`, `*.log` | Already covered by `.gitignore` |
 
 ## 3. Updating dependencies without breaking anything
@@ -103,14 +103,11 @@ directly; always through `VideoGenerator`, `YouTubeService` and
 - Square cropping uses `crop='min(iw,ih)':'min(iw,ih)'`, stable syntax
   for years; watch `gblur` and `drawtext` (the font is auto-detected in
   `find_system_font()`).
-- The portable exe bundles `ffmpeg.exe` + `ffprobe.exe` (located on PATH
-  at build time by `build_exe.py` / `TRAKKOUT.spec`). At runtime the app
-  prefers the bundled binaries when frozen (`_bundled_bin()`), while an
-  explicit path in **File > Settings** always wins. Source runs still need
-  FFmpeg on PATH. To refresh the bundled FFmpeg version, update it on the
-  build machine and recompile.
+- The app requires FFmpeg on PATH (or a custom path in **File > Settings**)
+  and fails with a clear message when missing. There is no portable
+  distribution: everyone runs from source via `start.bat`.
 
-## 6. Rebuilding the portable exe
+## 6. Local exe build (optional, not distributed)
 
 ```powershell
 venv\Scripts\python.exe build_exe.py        # builds dist\TRAKKOUT.exe
@@ -119,13 +116,15 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 
 - Takes several minutes. The `No module named 'grpc'` warning during the
   build is harmless (a submodule the app doesn't use).
-- Quick check: start the exe with `QT_QPA_PLATFORM=offscreen`,
-  it must stay alive 20 s without exiting.
-- `build/` and `dist/` are git-ignored: the exe ships via
-  GitHub Releases, never committed. Expect ~245 MB (Qt + FFmpeg
-  bundled; measured 243.7 MB).
+- `build/` and `dist/` are git-ignored and never committed: there is no
+  portable distribution, everyone runs from source.
 
 ## 7. Decided behaviors (not bugs)
+
+- **Fusion style is forced** (`app/main.py`): the native windows11 Qt style
+  computes identical hit rects for both spinbox arrows under stylesheets,
+  so the up arrow never fires (only down steps). Fusion is software-only
+  and behaves the same on every machine.
 
 - **Batch uses the item's frozen metadata** (from when it was queued);
   single generation uses the live form. Decided on purpose: don't change
