@@ -7,7 +7,7 @@ Practical guide to keep this application running for years.
 ```
 trakkout/
 ├── app/main.py              Entry point. Creates QApplication, applies theme, opens MainWindow.
-├── app/ui/main_window.py    Thin shell: __init__ + _build_ui + closeEvent (~460 lines).
+├── app/ui/main_window.py    Thin shell: __init__ + _build_ui + closeEvent (~490 lines).
 ├── app/ui/mixins/           ALL window logic, split by domain:
 │   ├── base.py              State, progress, navigation, history, settings.
 │   ├── collectors.py        Widgets → models readers (video/audio/overlay/beat).
@@ -74,8 +74,11 @@ directly; always through `VideoGenerator`, `YouTubeService` and
   $env:QT_QPA_PLATFORM='offscreen'
   venv\Scripts\python.exe -c "from PySide6.QtWidgets import QApplication; from app.config.settings import SettingsStore; from app.ui.main_window import MainWindow; from pathlib import Path; app=QApplication([]); w=MainWindow(Path('.'),SettingsStore()); print('UI OK', w.windowTitle()); w.close()"
   ```
-- **google-api-python-client:** if the local discovery changes, uploads may
-  need network on first run. The exe already bundles `youtube.v3.json`.
+- **google-api-python-client:** the client is built with
+  `cache_discovery=False` (`client()` in `app/youtube/youtube_service.py`),
+  so the discovery doc is fetched from the network on every fresh start.
+  Uploads inherently need connectivity, and a Google-side discovery change
+  takes effect immediately (no bundled doc to go stale).
 - **Python:** the project asks for `>=3.11`. Before bumping minor versions
   (3.12 → 3.13…), rebuild the exe: PyInstaller is version-sensitive.
 
