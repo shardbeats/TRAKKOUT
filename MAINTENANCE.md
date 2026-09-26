@@ -122,8 +122,8 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - Quick check: start the exe with `QT_QPA_PLATFORM=offscreen`,
   it must stay alive 20 s without exiting.
 - `build/` and `dist/` are git-ignored: the exe ships via
-  GitHub Releases, never committed. Expect a big file (Qt + FFmpeg
-  bundled, well over 100 MB).
+  GitHub Releases, never committed. Expect ~245 MB (Qt + FFmpeg
+  bundled; measured 243.7 MB).
 
 ## 7. Decided behaviors (not bugs)
 
