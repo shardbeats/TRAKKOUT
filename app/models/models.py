@@ -11,6 +11,30 @@ Privacy = Literal["private", "unlisted", "public"]
 QueueStatus = Literal["Pending", "Generating", "Ready", "Uploading", "Uploaded", "Failed"]
 
 
+def resolve_clip_range(trim_start: float, trim_end: float, duration: float) -> tuple[float, float]:
+    """Clamp a (start, end) clip selection to [0, duration].
+
+    ``trim_end`` <= 0 means "to the end". Returns ``(start, end)`` with
+    0 <= start <= end <= max(duration, 0). Tolerant to garbage input
+    (old DB rows, None): falls back to the full range. Callers that need
+    start < end must validate separately (see validators.validate_trim).
+    """
+    total = max(0.0, float(duration or 0.0))
+    try:
+        start = max(0.0, float(trim_start or 0.0))
+    except (TypeError, ValueError):
+        start = 0.0
+    try:
+        end = float(trim_end or 0.0)
+    except (TypeError, ValueError):
+        end = 0.0
+    if end <= 0.0:
+        end = total
+    end = min(max(end, 0.0), total)
+    start = min(start, end)
+    return start, end
+
+
 @dataclass
 class AudioInfo:
     path: str = ""
@@ -68,6 +92,8 @@ class VideoSettings:
     preset: str = "medium"
     audio_format: AudioFormat = "aac"  # type: ignore[assignment]
     audio_bitrate: str = "192k"
+    trim_start: float = 0.0  # clip start in seconds (Shorts). 0 = from the beginning.
+    trim_end: float = 0.0    # clip end in seconds. <= 0 = to the end.
 
     @property
     def resolution(self) -> str:
@@ -77,6 +103,20 @@ class VideoSettings:
     def is_vertical(self) -> bool:
         """9:16 Shorts format (height > width)."""
         return self.height > self.width
+
+    def clip_range(self, duration: float) -> tuple[float, float]:
+        """Effective (start, end) clamped to the audio duration."""
+        return resolve_clip_range(self.trim_start, self.trim_end, duration)
+
+    def clip_duration(self, duration: float) -> float:
+        """Effective clip length in seconds."""
+        s, e = self.clip_range(duration)
+        return max(0.0, e - s)
+
+    @property
+    def has_trim(self) -> bool:
+        """Whether a sub-range (not the full audio) is selected."""
+        return (self.trim_start or 0.0) > 0.0 or (self.trim_end or 0.0) > 0.0
 
 
 @dataclass
@@ -146,7 +186,7 @@ class BeatMetadata:
 class YouTubeMetadata:
     title: str = ""
     description: str = ""
-    tags: list[str] = field(default_factory=list)
+    tags: str = ""
     category_id: str = "10"
     privacy: Privacy = "private"  # type: ignore[assignment]
     playlist_id: str = ""
@@ -184,6 +224,8 @@ class QueueItem:
     video_path: str = ""
     status: QueueStatus = "Pending"
     error: str = ""
+    trim_start: float = 0.0
+    trim_end: float = 0.0
 
 
 @dataclass
@@ -204,3 +246,5 @@ class HistoryEntry:
     description: str = ""
     tags: str = ""
     category_id: str = "10"
+    trim_start: float = 0.0
+    trim_end: float = 0.0

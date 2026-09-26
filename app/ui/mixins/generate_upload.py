@@ -16,7 +16,7 @@ from app.utils.files import ensure_dir, human_size, safe_stem
 from app.utils.formatting import fmt_hms
 from app.utils.scheduling import describe_rfc3339_in_tz
 from app.utils.validators import (
-    validate_audio_path, validate_image_path, validate_youtube_metadata,
+    validate_audio_path, validate_image_path, validate_trim, validate_youtube_metadata,
 )
 
 log = logging.getLogger(__name__)
@@ -54,9 +54,15 @@ class GenerateUploadMixin:
         # If it exists, add a suffix
         if out.exists():
             out = out.with_name(f"{out.stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4")
+        dur = self.audio_info.duration or 0
+        vt = validate_trim(vs.trim_start, vs.trim_end, dur)
+        if not vt.ok:
+            QMessageBox.warning(self, "Generate video", vt.message); return
+        clip_start, clip_end = vs.clip_range(dur)
+        clip_len = clip_end - clip_start
         # Vertical videos over 3 min are not classified as Shorts.
         from app.ui.mixins.collectors import SHORTS_MAX_SECONDS
-        if vs.is_vertical and (self.audio_info.duration or 0) > SHORTS_MAX_SECONDS:
+        if vs.is_vertical and clip_len > SHORTS_MAX_SECONDS:
             QMessageBox.warning(
                 self, "Vertical video",
                 "This video is vertical but longer than 3 minutes, so YouTube will "
@@ -65,7 +71,8 @@ class GenerateUploadMixin:
         self._persist_ui_to_settings()
         self._set_busy(True)
         self._op_start = time.time()
-        self._op_total = self.audio_info.duration or 0
+        self._op_total = clip_len
+        self._last_trim = (vs.trim_start, vs.trim_end)
         self._set_status(f"Generating video… -> {out.name}")
         self.ffmpeg_worker = FFmpegWorker(self.video_gen, cover, audio, str(out), vs, ov, self)
         self.ffmpeg_worker.progress.connect(self._on_ff_progress)
@@ -86,6 +93,7 @@ class GenerateUploadMixin:
         self._set_progress(100, f"Done in {fmt_hms(el)}")
         self._set_status("Video generated successfully.")
         QMessageBox.information(self, "Video", f"Video generated successfully.\n{path}")
+        trim_start, trim_end = self._last_trim
         self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip() or Path(path).stem,
             audio_path=self.ed_audio.text().strip(), video_path=path,
@@ -93,7 +101,8 @@ class GenerateUploadMixin:
             title=self.ed_title.text().strip(), description=self.ed_desc.toPlainText(),
             tags=self.ed_tags.text().strip(),
             category_id=str(self.cb_cat.currentData() or "10"),
-            privacy=self.cb_privacy.currentText()))
+            privacy=self.cb_privacy.currentText(),
+            trim_start=trim_start, trim_end=trim_end))
 
     def _on_ff_fail(self, msg: str):
         self._set_busy(False)
@@ -113,6 +122,7 @@ class GenerateUploadMixin:
         beat = self._collect_beat_metadata()
         dur = self.audio_info.duration if self.audio_info else 0.0
         vs = self._collect_video_settings()
+        clip_start, clip_end = vs.clip_range(dur)
         sched = describe_rfc3339_in_tz(meta.publish_at, self.cb_tz.currentText()) if meta.publish_at else "Now"
         summary = (
             f"Beat: {beat.title or '-'} | Artist: {beat.artist or '-'}{(' x ' + beat.artist2) if beat.artist2 else ''} | Prod: {beat.producer or '-'}\n"
@@ -125,6 +135,7 @@ class GenerateUploadMixin:
             f"Publish: {sched}\n"
             f"Channel: {ch.display if ch else '(none selected)'}\n"
             f"Audio length: {fmt_hms(dur)}\n"
+            f"Clip: {fmt_hms(clip_start)} – {fmt_hms(clip_end)} ({fmt_hms(clip_end - clip_start)})\n"
             f"Resolution: {vs.resolution}  Fit: {vs.fit_mode}  FPS: {vs.fps}  Audio: {vs.audio_format} {vs.audio_bitrate}\n"
             f"Current video: {self.current_video or '(not generated yet)'}\n"
             f"Audio: {self.ed_audio.text()}\nArtwork: {self.ed_cover.text()}"
@@ -203,6 +214,7 @@ class GenerateUploadMixin:
         cht = result.get("channel_title", "")
         scheduled = bool(getattr(self, "_last_publish_at", ""))
         self._set_status("Upload completed (scheduled)." if scheduled else "Upload completed.")
+        trim_start, trim_end = self._last_trim
         self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip(), audio_path=self.ed_audio.text().strip(),
             video_path=self.current_video, channel_id=result.get("channel_id", ""),
@@ -211,7 +223,8 @@ class GenerateUploadMixin:
             status="Scheduled" if scheduled else "Uploaded",
             title=self.ed_title.text().strip(), description=self.ed_desc.toPlainText(),
             tags=self.ed_tags.text().strip(),
-            category_id=str(self.cb_cat.currentData() or "10")))
+            category_id=str(self.cb_cat.currentData() or "10"),
+            trim_start=trim_start, trim_end=trim_end))
         box = QMessageBox(self)
         box.setWindowTitle("Upload complete")
         extra = (f"\nScheduled: {describe_rfc3339_in_tz(self._last_publish_at, self.cb_tz.currentText())}"

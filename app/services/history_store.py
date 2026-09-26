@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS history (
     title TEXT DEFAULT '',
     description TEXT DEFAULT '',
     tags TEXT DEFAULT '',
-    category_id TEXT DEFAULT '10'
+    category_id TEXT DEFAULT '10',
+    trim_start REAL DEFAULT 0,
+    trim_end REAL DEFAULT 0
 );
 """
 
@@ -47,10 +49,12 @@ class HistoryStore:
         with self._connect() as conn:
             conn.execute(_SCHEMA)
             cols = {r[1] for r in conn.execute("PRAGMA table_info(history)").fetchall()}
-            for col, default in (("title", "''"), ("description", "''"),
-                                 ("tags", "''"), ("category_id", "'10'")):
+            for col, col_type, default in (
+                    ("title", "TEXT", "''"), ("description", "TEXT", "''"),
+                    ("tags", "TEXT", "''"), ("category_id", "TEXT", "'10'"),
+                    ("trim_start", "REAL", "0"), ("trim_end", "REAL", "0")):
                 if col not in cols:
-                    conn.execute(f"ALTER TABLE history ADD COLUMN {col} TEXT DEFAULT {default}")
+                    conn.execute(f"ALTER TABLE history ADD COLUMN {col} {col_type} DEFAULT {default}")
             conn.commit()
 
     def add(self, entry: HistoryEntry) -> int:
@@ -59,12 +63,13 @@ class HistoryStore:
             cur = conn.execute(
                 "INSERT INTO history (created_at, beat_name, audio_path, video_path, "
                 "channel_id, channel_title, video_id, video_url, privacy, status, error,"
-                " title, description, tags, category_id) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " title, description, tags, category_id, trim_start, trim_end) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (entry.created_at, entry.beat_name, entry.audio_path, entry.video_path,
                  entry.channel_id, entry.channel_title, entry.video_id, entry.video_url,
                  entry.privacy, entry.status, entry.error,
-                 entry.title, entry.description, entry.tags, entry.category_id),
+                 entry.title, entry.description, entry.tags, entry.category_id,
+                 entry.trim_start, entry.trim_end),
             )
             conn.commit()
             return int(cur.lastrowid)
@@ -85,12 +90,14 @@ class HistoryStore:
             conn.execute(
                 "UPDATE history SET beat_name=?, audio_path=?, video_path=?,"
                 " channel_id=?, channel_title=?, video_id=?, video_url=?, privacy=?,"
-                " status=?, error=?, title=?, description=?, tags=?, category_id=?"
+                " status=?, error=?, title=?, description=?, tags=?, category_id=?,"
+                " trim_start=?, trim_end=?"
                 " WHERE id=?",
                 (entry.beat_name, entry.audio_path, entry.video_path,
                  entry.channel_id, entry.channel_title, entry.video_id, entry.video_url,
                  entry.privacy, entry.status, entry.error,
                  entry.title, entry.description, entry.tags, entry.category_id,
+                 entry.trim_start, entry.trim_end,
                  entry.id),
             )
             conn.commit()

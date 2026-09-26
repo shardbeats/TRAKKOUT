@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
@@ -114,6 +115,27 @@ class OAuthWorker(QThread):
             self.failed.emit(msg)
 
 
+class WaveformWorker(QThread):
+    """Decode audio peaks in the background for the waveform widget."""
+
+    finished_ok = Signal(list)
+    failed = Signal(str)
+
+    def __init__(self, ffmpeg_service, audio: str, buckets: int = 800,
+                 parent=None) -> None:
+        super().__init__(parent)
+        self._svc = ffmpeg_service
+        self._audio = audio
+        self._buckets = buckets
+
+    def run(self) -> None:
+        try:
+            peaks = self._svc.get_waveform(self._audio, self._buckets)
+            self.finished_ok.emit(list(peaks))
+        except Exception as exc:
+            self.failed.emit(str(exc) or repr(exc))
+
+
 def vars_for(item: QueueItem) -> dict:
     return {
         "id": item.id, "beat_name": item.beat_name, "audio_path": item.audio_path,
@@ -122,7 +144,16 @@ def vars_for(item: QueueItem) -> dict:
         "category_id": item.category_id, "privacy": item.privacy,
         "channel_id": item.channel_id, "video_path": item.video_path,
         "publish_at": item.publish_at,
+        "trim_start": item.trim_start, "trim_end": item.trim_end,
     }
+
+
+def _as_float(value: object) -> float:
+    """Tolerant float coercion for values coming from frozen queue dicts."""
+    try:
+        return float(value or 0.0)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
 
 
 class _BatchBase(QThread):
@@ -192,8 +223,13 @@ class BatchGenerateWorker(_BatchBase):
 
     def _run_item(self, item: dict, progress_cb) -> object:
         out = Path(self.out_dir) / f"{safe_stem(item.get('beat_name') or Path(item['audio_path']).stem)}.mp4"
+        # Each item carries its own frozen clip (Short selection at queue time);
+        # the live form only applies to single generation.
+        vs = replace(self.vs,
+                     trim_start=_as_float(item.get("trim_start")),
+                     trim_end=_as_float(item.get("trim_end")))
         self.svc.generate(item["audio_path"], item["artwork_path"], out,
-                          self.vs, self.ov, on_progress=progress_cb)
+                          vs, self.ov, on_progress=progress_cb)
         return str(out)
 
     def _succeed(self, item_id: int, payload: object) -> None:

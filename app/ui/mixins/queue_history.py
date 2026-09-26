@@ -7,9 +7,10 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox, QTableWidgetItem
 
-from app.models.models import HistoryEntry, QueueItem
+from app.models.models import HistoryEntry, QueueItem, resolve_clip_range
 from app.ui.workers import BatchGenerateWorker, BatchUploadWorker, vars_for
 from app.utils.scheduling import describe_rfc3339_in_tz
+from app.utils.validators import validate_trim
 
 log = logging.getLogger(__name__)
 
@@ -28,6 +29,19 @@ class QueueHistoryMixin:
         if _pub_err:
             QMessageBox.warning(self, "Queue", f"Invalid schedule.\n{_pub_err}")
             return
+        vs = self._collect_video_settings()
+        dur = 0.0
+        if self.audio_info is not None and self.audio_info.path == audio:
+            dur = self.audio_info.duration or 0.0
+        else:
+            try:
+                dur = self.ffmpeg.get_audio_info(audio).duration or 0.0
+            except Exception:
+                dur = 0.0
+        vt = validate_trim(vs.trim_start, vs.trim_end, dur)
+        if not vt.ok:
+            QMessageBox.warning(self, "Queue", vt.message)
+            return
         item = QueueItem(
             beat_name=self.ed_beat.text().strip() or Path(audio).stem,
             audio_path=audio, artwork_path=cover,
@@ -37,11 +51,17 @@ class QueueHistoryMixin:
             privacy=self.cb_privacy.currentText(),
             channel_id=ch.channel_id if ch else "",
             publish_at=_pub,
+            trim_start=vs.trim_start, trim_end=vs.trim_end,
             status="Pending",
         )
         self.queue.add(item)
         self._refresh_queue_table()
-        self._set_status(f"Added to queue: {item.beat_name}")
+        if vs.has_trim:
+            clip_s, clip_e = vs.clip_range(dur)
+            self._set_status(f"Added to queue: {item.beat_name} "
+                             f"(clip {clip_s:.1f}s–{clip_e:.1f}s)")
+        else:
+            self._set_status(f"Added to queue: {item.beat_name}")
 
     def _refresh_queue_table(self):
         items = self.queue.all()
@@ -100,10 +120,12 @@ class QueueHistoryMixin:
             long_names = []
             for i in items:
                 try:
-                    if self.ffmpeg.get_audio_info(i.audio_path).duration > SHORTS_MAX_SECONDS:
-                        long_names.append(i.beat_name)
+                    dur = self.ffmpeg.get_audio_info(i.audio_path).duration
                 except Exception:
-                    pass
+                    continue
+                _s, _e = resolve_clip_range(i.trim_start, i.trim_end, dur)
+                if _e - _s > SHORTS_MAX_SECONDS:
+                    long_names.append(i.beat_name)
             if long_names:
                 QMessageBox.information(
                     self, "Vertical videos",
@@ -131,7 +153,9 @@ class QueueHistoryMixin:
             beat_name=it.beat_name if it else "", video_path=path, status="Generated",
             title=it.title if it else "", description=it.description if it else "",
             tags=it.tags if it else "", category_id=it.category_id if it else "10",
-            privacy=it.privacy if it else "private"))
+            privacy=it.privacy if it else "private",
+            trim_start=it.trim_start if it else 0.0,
+            trim_end=it.trim_end if it else 0.0))
 
     def _on_batch_gen_fail(self, iid: int, msg: str):
         log.error("Error generating video (item %s): %s", iid, msg)
@@ -178,7 +202,9 @@ class QueueHistoryMixin:
             status="Scheduled" if scheduled else "Uploaded",
             title=it.title if it else "", description=it.description if it else "",
             tags=it.tags if it else "", category_id=it.category_id if it else "10",
-            privacy=it.privacy if it else "private"))
+            privacy=it.privacy if it else "private",
+            trim_start=it.trim_start if it else 0.0,
+            trim_end=it.trim_end if it else 0.0))
 
     def _on_batch_up_fail(self, iid: int, msg: str):
         self.queue.set_status(iid, "Failed", error=msg)
@@ -240,6 +266,8 @@ class QueueHistoryMixin:
         e.tags = self.ed_tags.text().strip()
         e.category_id = str(self.cb_cat.currentData() or "10")
         e.privacy = self.cb_privacy.currentText()
+        e.trim_start = float(self.sp_trim_start.value())
+        e.trim_end = float(self.sp_trim_end.value())
         try:
             self.history.update(e)
         except Exception as exc:
@@ -278,6 +306,9 @@ class QueueHistoryMixin:
                 self.cb_cat.setCurrentIndex(idx)
         if e.privacy in ("private", "unlisted", "public") and not self.ck_schedule.isChecked():
             self.cb_privacy.setCurrentText(e.privacy)
+        self.sp_trim_start.setValue(float(e.trim_start or 0.0))
+        self.sp_trim_end.setValue(float(e.trim_end or 0.0))
+        self._update_trim_range()
         if e.video_path:
             self.current_video = e.video_path
         self._show_view(0)

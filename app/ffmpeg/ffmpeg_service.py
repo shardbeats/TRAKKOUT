@@ -227,6 +227,29 @@ class FFmpegService:
             raise MediaProbeError("Image looks corrupt (no detectable resolution).")
         return info
 
+    def get_waveform(self, audio_path: str | Path, buckets: int = 800) -> list[float]:
+        """Peak amplitudes (0..1) of the audio for the waveform widget.
+
+        Decodes to low-rate mono PCM in memory (no temp files). Raises
+        FFmpegNotFoundError / MediaProbeError with clear messages.
+        """
+        from app.ffmpeg.waveform import peaks_from_s16le
+        cmd = [self.resolve("ffmpeg"), "-v", "error", "-i", str(audio_path),
+               "-ac", "1", "-ar", "4000", "-f", "s16le",
+               "-acodec", "pcm_s16le", "-"]
+        kwargs: dict = {"capture_output": True}
+        if os.name == "nt":
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            result = subprocess.run(cmd, timeout=120, **kwargs)
+        except FileNotFoundError as exc:
+            raise FFmpegNotFoundError(f"FFmpeg not found ({cmd[0]}).") from exc
+        except subprocess.TimeoutExpired as exc:
+            raise VideoBuildError("Waveform analysis timed out.") from exc
+        if result.returncode != 0 or not result.stdout:
+            raise MediaProbeError("Could not decode audio for the waveform.")
+        return peaks_from_s16le(bytes(result.stdout), buckets)
+
     # ---------- filter construction ----------
     def build_video_filter(self, vs: VideoSettings, ov: OverlaySettings) -> str:
         """Return a filter_complex with input [0:v] and output [vout].
@@ -306,6 +329,7 @@ class FFmpegService:
         vs: VideoSettings,
         ov: OverlaySettings,
         duration: float,
+        start: float = 0.0,
     ) -> list[str]:
         ff = self.resolve("ffmpeg")
         vf = self.build_video_filter(vs, ov)
@@ -314,13 +338,18 @@ class FFmpegService:
         cmd = [
             ff, "-y", "-v", "warning", "-progress", "pipe:1", "-nostats",
             "-loop", "1", "-framerate", str(max(1, vs.fps)), "-i", str(image_path),
+        ]
+        if start > 0:
+            # Fast input seek on the audio track (no decode cost before start).
+            cmd += ["-ss", f"{start:.3f}"]
+        cmd += [
             "-i", str(audio_path),
             "-filter_complex", vf,
             "-map", "[vout]", "-map", "1:a:0?",
             "-c:v", "libx264", "-preset", vs.preset or "medium",
             "-crf", "18", "-pix_fmt", "yuv420p",
             "-r", str(max(1, vs.fps)),
-            "-shortest", "-t", f"{max(0.5, duration):.3f}",
+            "-shortest", "-t", f"{max(0.05, duration):.3f}",
             "-movflags", "+faststart",
         ]
         cmd += audio_args
@@ -350,6 +379,14 @@ class FFmpegService:
         if total <= 0:
             raise VideoBuildError("Invalid audio duration (0 s).")
 
+        # Short-clip selection (from VideoSettings.trim_*): everything below
+        # works on the clip, not the full audio. No trim = identical behavior.
+        clip_start, clip_end = vs.clip_range(total)
+        if clip_end <= clip_start:
+            raise VideoBuildError(
+                f"Invalid clip selection ({clip_start:.1f}s – {clip_end:.1f}s).")
+        total = clip_end - clip_start
+
         out = Path(str(output_path))
         out.parent.mkdir(parents=True, exist_ok=True)
         # Rough free-space check: duration * 1.5 MB/s + 20 MB margin.
@@ -358,7 +395,8 @@ class FFmpegService:
         if not has_space_for(out.parent, need):
             raise VideoBuildError("Not enough disk space in the output folder.")
 
-        cmd = self.build_command(image_path, audio_path, out, vs, ov, total)
+        cmd = self.build_command(image_path, audio_path, out, vs, ov, total,
+                                 start=clip_start)
         log.info("FFmpeg: %s", " ".join(cmd))
         self._cancel.clear()
         if cancel_event is None:

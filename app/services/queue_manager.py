@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS queue (
     privacy TEXT DEFAULT 'private',
     channel_id TEXT DEFAULT '',
     publish_at TEXT DEFAULT '',
+    trim_start REAL DEFAULT 0,
+    trim_end REAL DEFAULT 0,
     video_path TEXT DEFAULT '',
     status TEXT DEFAULT 'Pending',
     error TEXT DEFAULT ''
@@ -38,7 +40,11 @@ CREATE TABLE IF NOT EXISTS queue (
 
 _COLUMNS = ("id", "beat_name", "audio_path", "artwork_path", "title",
             "description", "tags", "category_id", "privacy", "channel_id",
-            "publish_at", "video_path", "status", "error")
+            "publish_at", "trim_start", "trim_end",
+            "video_path", "status", "error")
+
+# Added after 1.0.0: backfilled with DEFAULT 0 (= full audio) on old DBs.
+_NEW_COLUMNS = (("trim_start", "0"), ("trim_end", "0"))
 
 # Terminal states live in history; the queue only keeps actionable items.
 _DROP_ON_LOAD = ("Uploaded", "Scheduled")
@@ -62,18 +68,27 @@ class QueueManager:
         conn.row_factory = sqlite3.Row
         return conn
 
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(queue)").fetchall()}
+        for col, default in _NEW_COLUMNS:
+            if col not in cols:
+                conn.execute(f"ALTER TABLE queue ADD COLUMN {col} REAL DEFAULT {default}")
+
     def _save(self) -> None:
         if self._db is None:
             return
         try:
             with self._connect() as conn:
                 conn.execute(_SCHEMA)
+                self._migrate(conn)
                 conn.execute("DELETE FROM queue")
                 for it in self._items:
                     conn.execute(
                         "INSERT INTO queue (id, beat_name, audio_path, artwork_path, title,"
                         " description, tags, category_id, privacy, channel_id, publish_at,"
-                        " video_path, status, error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        " trim_start, trim_end,"
+                        " video_path, status, error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         tuple(getattr(it, c) or "" if c != "id" else it.id for c in _COLUMNS),
                     )
                 conn.commit()
@@ -87,6 +102,7 @@ class QueueManager:
         try:
             with self._connect() as conn:
                 conn.execute(_SCHEMA)
+                self._migrate(conn)
                 rows = conn.execute("SELECT * FROM queue ORDER BY id").fetchall()
         except Exception as exc:
             log.warning("Could not load queue: %s", exc)
@@ -94,8 +110,14 @@ class QueueManager:
         items: list[QueueItem] = []
         for r in rows:
             d = dict(r)
+            row = {c: d.get(c, "") for c in _COLUMNS}
+            for c in ("trim_start", "trim_end"):
+                try:
+                    row[c] = float(row[c] or 0.0)
+                except (TypeError, ValueError):
+                    row[c] = 0.0
             try:
-                item = QueueItem(**{c: d.get(c, "") for c in _COLUMNS})
+                item = QueueItem(**row)
             except TypeError:
                 continue
             if item.status in _DROP_ON_LOAD:
