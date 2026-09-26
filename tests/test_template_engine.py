@@ -74,3 +74,14 @@ def test_context_extra_overrides():
     engine = TemplateEngine()
     ctx = engine.context_from_beat(BeatMetadata(), {"channel": "My Channel"})
     assert ctx["channel"] == "My Channel"
+
+
+def test_removed_contact_variable_stays_intact():
+    # {{contact}} was retired (no form field ever fed it): it must no longer
+    # be offered nor silently swallowed — unknown text stays literal and is
+    # reported as missing.
+    engine = TemplateEngine()
+    assert "contact" not in engine.variable_names()
+    assert "contact" not in engine.context_from_beat(BeatMetadata())
+    assert engine.render("Hi {{contact}}", {}) == "Hi {{contact}}"
+    assert engine.missing_variables("Hi {{contact}}", {}) == ["contact"]

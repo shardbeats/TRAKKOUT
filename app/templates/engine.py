@@ -111,7 +111,6 @@ class TemplateEngine:
             "purchase_url": getattr(beat, "purchase_url", "") or "",
             "tags": ", ".join(tags),
             "description": getattr(beat, "description", "") or "",
-            "contact": getattr(beat, "contact", "") if hasattr(beat, "contact") else "",
             "date": _date.today().isoformat(),
             "channel": "",
         }

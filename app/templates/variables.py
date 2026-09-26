@@ -23,7 +23,6 @@ BASE_VARIABLES: tuple[TemplateVariable, ...] = (
     TemplateVariable("purchase_url", "Purchase/license link", "", ("license_url",)),
     TemplateVariable("tags", "Comma-separated tags"),
     TemplateVariable("description", "Base beat description"),
-    TemplateVariable("contact", "Contact"),
     TemplateVariable("date", "Current date (YYYY-MM-DD)"),
     TemplateVariable("channel", "Selected YouTube channel name"),
 )
