@@ -37,9 +37,9 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 - **Operating System**: Windows 10/11 (64-bit)
 - **Processor**: Intel Core i5 or equivalent
 - **RAM**: 8 GB minimum, 16 GB recommended
-- **Disk Space**: 500 MB free + audio/artwork file size
-- **Python**: 3.11+ — only needed to run from source (`start.bat` sets it up)
-- **FFmpeg/FFprobe**: only needed to run from source (the portable `.exe` bundles it)
+- **Disk Space**: 50 MB free + audio/artwork file size
+- **Python**: 3.11+ (with `Add to PATH` enabled)
+- **FFmpeg/FFprobe**: installed locally or configurable via **File > Settings**
 
 ### Dependencies:
 ```bash
@@ -54,22 +54,16 @@ tzdata>=2024.1  # Windows only
 
 ---
 
-## 🚀 Installation (2 minutes + one-time Google setup)
+## 🚀 Installation
 
-### Option A — Portable `.exe` (recommended)
-
-1. Download `TRAKKOUT.exe` from [GitHub Releases](https://github.com/shardbeats/TRAKKOUT/releases).
-2. Double-click it. Nothing else to install: Python and FFmpeg travel inside.
-3. Continue below with the one-time Google setup (required for uploads).
-
-### Option B — From source with `start.bat` (automatic)
+### Quick start with `start.bat` (recommended)
 
 1. Install Python 3.11+ from [python.org/downloads](https://www.python.org/downloads/)
    (check **"Add python.exe to PATH"**).
-2. Double-click **`start.bat`**: it creates the environment, installs
+2. Install FFmpeg: `winget install Gyan.FFmpeg`
+   (or set its path later in **File > Settings**).
+3. Double-click **`start.bat`**: it creates the environment, installs
    dependencies and launches the app.
-3. Video generation needs FFmpeg on PATH (`winget install Gyan.FFmpeg`),
-   or set its path later in **File > Settings**.
 4. Continue below with the one-time Google setup (required for uploads).
 
 ### Set Up Google Cloud OAuth (required once, everyone)
@@ -107,8 +101,7 @@ python -m app.main
 ## 🎮 Basic Usage
 
 ### Start the App:
-- **Portable `.exe`**: double-click `TRAKKOUT.exe`.
-- **From source**: double-click `start.bat` (or `run.bat` if your `venv` is already set up).
+Double-click `start.bat` (or `run.bat` if your `venv` is already set up).
 
 ### Usage Flow:
 
