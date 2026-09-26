@@ -127,15 +127,3 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - **Tests:** suite in `tests/` (`python -m pytest tests -q`, CI in `.github/workflows/tests.yml`).
   Covers pure logic without GUI/network/FFmpeg (utils, models, templates, settings, SQLite stores,
   YouTube errors and OAuth validation). Exe verification stays manual.
-
-## 8. Backups
-
-- Code: GitHub (remote). Enough.
-- Local data (NOT in git, and that's fine): `%APPDATA%\TRAKKOUT\`
-  (`settings.json`, `token.json`, `history.db`). When switching PCs, copy that
-  folder or reconfigure OAuth from scratch.
-- The first version was called Beat2YouTube: on startup the app migrates
-  `settings.json`/`token.json`/`history.db` from `%APPDATA%\Beat2YouTube\`
-  automatically if present (see `_migrate_legacy_data` in `app/config/settings.py`).
-- Your custom presets live in `app\resources\templates\*.json`:
-  they're in git if you commit them; otherwise export them before formatting.
