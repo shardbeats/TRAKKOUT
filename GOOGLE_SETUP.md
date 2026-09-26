@@ -89,12 +89,23 @@ Estimated time: 15–20 minutes. Cost: 0 (free tier).
 
 ## 7. Quota (how much you can upload)
 
-- New projects get **10,000 units/day**. Each upload
-  (`videos.insert`) costs **~1,600** → about **6 uploads a day**, plenty
-  for personal use. Channel listings cost almost nothing.
-- On *"quota exhausted"*: wait until next day (resets at midnight
-  Pacific time) or request more in Cloud Console → *Quotas*.
+Free tier, no credit card needed. Since mid-2026 Google splits quota into
+independent buckets (check your project's real limits in Cloud Console →
+*Quotas*, as older projects may differ):
+
+- **Uploads** (`videos.insert`): **100/day** in a dedicated bucket —
+  uploads no longer eat the shared pool, so for personal use the cap is
+  effectively unreachable. Old guides quoting "~1,600 units ≈ 6 uploads/day"
+  describe a retired model.
+- **Reads** (channel/video listings): **1 unit** each from a shared pool of
+  **10,000 units/day** — thousands a day, irrelevant in practice.
+- On *"quota exhausted"* (or HTTP 429): wait until next day (resets at
+  midnight Pacific time) or request more in Cloud Console → *Quotas*
+  (free audit form).
 - Quota is **per project = per person**: your usage doesn't affect anyone else.
+- Note: isolated reports exist of undocumented per-day upload caps on some
+  projects — if uploads start failing with 429 despite quota headroom,
+  wait 24 h before retrying.
 
 ## 8. Common issues (message → cause → fix)
 
