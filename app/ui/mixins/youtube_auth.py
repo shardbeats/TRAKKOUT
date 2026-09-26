@@ -182,6 +182,7 @@ class YouTubeAuthMixin:
             "3) APIs & Services > OAuth consent screen > External > fill in app + scopes "
             "'youtube.upload' and 'youtube' > add your email as a Test user.\n"
             "4) Credentials > Create Credentials > OAuth client ID > Desktop app > Download JSON.\n"
-            f"5) Save that file as:\n{self.auth.client_secrets_path}\n\n"
+            f"5) Save that downloaded file in:\n{self.auth.client_secrets_path.parent}\n"
+            "(any client_secret*.json name works, no need to rename).\n\n"
             "6) Come back here and press 'Connect Google Account'.\n"
             "See README section 5 for the full walkthrough.")

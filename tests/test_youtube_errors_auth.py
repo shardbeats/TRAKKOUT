@@ -74,3 +74,33 @@ def test_oauth_valid_installed_section(tmp_path: Path):
     secrets.write_text(json.dumps({"installed": {"client_id": "x"}}), encoding="utf-8")
     ok, _ = GoogleAuth(secrets, tmp_path / "token.json").validate_client_secrets()
     assert ok is True
+
+
+def test_oauth_detects_google_download_name(tmp_path: Path):
+    dl = tmp_path / "client_secret_872538482962-abc123.apps.googleusercontent.com.json"
+    dl.write_text(json.dumps({"installed": {"client_id": "x"}}), encoding="utf-8")
+    auth = GoogleAuth(tmp_path / "client_secrets.json", tmp_path / "token.json")
+    assert auth.effective_secrets_path() == dl
+    ok, msg = auth.validate_client_secrets()
+    assert ok is True
+    assert dl.name in msg
+
+
+def test_oauth_exact_name_wins_over_download(tmp_path: Path):
+    exact = tmp_path / "client_secrets.json"
+    exact.write_text(json.dumps({"installed": {"client_id": "exact"}}), encoding="utf-8")
+    dl = tmp_path / "client_secret_123.json"
+    dl.write_text(json.dumps({"installed": {"client_id": "other"}}), encoding="utf-8")
+    auth = GoogleAuth(exact, tmp_path / "token.json")
+    assert auth.effective_secrets_path() == exact
+    ok, _ = auth.validate_client_secrets()
+    assert ok is True
+
+
+def test_oauth_ignores_invalid_downloads(tmp_path: Path):
+    bad = tmp_path / "client_secret_broken.json"
+    bad.write_text("{not json", encoding="utf-8")
+    auth = GoogleAuth(tmp_path / "client_secrets.json", tmp_path / "token.json")
+    ok, msg = auth.validate_client_secrets()
+    assert ok is False
+    assert "not found" in msg

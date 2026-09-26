@@ -83,7 +83,8 @@ tzdata>=2024.1  # Windows only
    - Test users: add your Google account (while in "Testing")
 4. **Credentials > OAuth client ID**:
    - Application type: **Desktop app**, name: `TRAKKOUT Desktop`
-   - **Download JSON** → save as `%APPDATA%\TRAKKOUT\client_secrets.json`
+   - **Download JSON** → save the file into `%APPDATA%\TRAKKOUT\`
+     (any `client_secret*.json` name works, no need to rename)
 
 ### Enable YouTube Data API v3
 
@@ -241,7 +242,7 @@ In the *YouTube Metadata* section enable **"Publish later"**, pick date/time and
 |---------|---------------------------|
 | `FFmpeg not found` | Install FFmpeg (Installation, step 2) or set the path in **File > Settings** |
 | `duration = 0` / corrupt file | Audio/image are damaged; try another file |
-| OAuth won't open / cancelled | Check `client_secrets.json`; accept permissions in the browser |
+| OAuth won't open / cancelled | Check your `client_secret*.json` is in `%APPDATA%\TRAKKOUT\`; accept permissions in the browser |
 | API not enabled | Enable YouTube Data API v3 in Cloud Console |
 | `quotaExceeded` | Daily quota exhausted; wait or request more quota |
 | Interrupted upload / offline | Retry; uploads resume in 8 MB chunks |

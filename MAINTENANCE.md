@@ -55,7 +55,7 @@ directly; always through `VideoGenerator`, `YouTubeService` and
 | Every 12 months | Check YouTube Data API v3 deprecation notices | https://developers.google.com/youtube/v3/revision_history |
 | Every 12 months | Test against the latest stable FFmpeg | https://www.gyan.dev/ffmpeg/builds/ |
 | After every change | Rebuild the exe and test it in a clean folder | `build_exe.py` |
-| Always | Never commit `client_secrets.json`, `token.json`, `*.db`, `*.log` | Already covered by `.gitignore` |
+| Always | Never commit `client_secret*.json`, `token.json`, `*.db`, `*.log` | Already covered by `.gitignore` |
 
 ## 3. Updating dependencies without breaking anything
 
