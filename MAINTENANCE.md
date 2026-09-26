@@ -116,16 +116,7 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - `build/` and `dist/` are git-ignored: the exe ships via
   GitHub Releases, never committed.
 
-## 7. Release checklist
-
-1. `git status` free of secrets (`*secret*.json`, `token.json`, `*.db`, `*.log`).
-2. README and GOOGLE_SETUP.md up to date (generic paths, dependencies = `requirements.txt`).
-3. `CHANGELOG.md` with the new version + bump in `pyproject.toml` and `app/__init__.py`.
-4. Test exe on a clean folder/PC: generate 16:9 and 9:16, persistent queue
-   (close and reopen), Load/Update from history, private upload.
-5. Upload the exe to GitHub Releases (GitHub generates LICENSE when the repo is created).
-
-## 8. Decided behaviors (not bugs)
+## 7. Decided behaviors (not bugs)
 
 - **Batch uses the item's frozen metadata** (from when it was queued);
   single generation uses the live form. Decided on purpose: don't change
@@ -135,10 +126,9 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - **Shorts:** vertical + ≤3 min warns, doesn't block; YouTube classifies on its own.
 - **Tests:** suite in `tests/` (`python -m pytest tests -q`, CI in `.github/workflows/tests.yml`).
   Covers pure logic without GUI/network/FFmpeg (utils, models, templates, settings, SQLite stores,
-  YouTube errors and OAuth validation). Exe verification stays manual
-  with this section's checklist.
+  YouTube errors and OAuth validation). Exe verification stays manual.
 
-## 9. Backups
+## 8. Backups
 
 - Code: GitHub (remote). Enough.
 - Local data (NOT in git, and that's fine): `%APPDATA%\TRAKKOUT\`
