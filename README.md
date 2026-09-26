@@ -37,9 +37,9 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 - **Operating System**: Windows 10/11 (64-bit)
 - **Processor**: Intel Core i5 or equivalent
 - **RAM**: 8 GB minimum, 16 GB recommended
-- **Disk Space**: 2 GB MB margin + audio/artwork file size
-- **Python**: 3.11+ (with `Add to PATH` enabled)
-- **FFmpeg/FFprobe**: Installed locally or configurable via menu
+- **Disk Space**: 500 MB free + audio/artwork file size
+- **Python**: 3.11+ — only needed to run from source (`start.bat` sets it up)
+- **FFmpeg/FFprobe**: only needed to run from source (the portable `.exe` bundles it)
 
 ### Dependencies:
 ```bash
@@ -54,32 +54,25 @@ tzdata>=2024.1  # Windows only
 
 ---
 
-## 🚀 Step-by-Step Installation
+## 🚀 Installation (2 minutes + one-time Google setup)
 
-### 1️⃣ Install Python (3.11 or newer)
+### Option A — Portable `.exe` (recommended)
 
-1. Download from [python.org/downloads](https://www.python.org/downloads/)
-2. Check **"Add python.exe to PATH"** during installation
-3. Verify in PowerShell:
-   ```powershell
-   python --version
-   pip --version
-   ```
+1. Download `TRAKKOUT.exe` from [GitHub Releases](https://github.com/shardbeats/TRAKKOUT/releases).
+2. Double-click it. Nothing else to install: Python and FFmpeg travel inside.
+3. Continue below with the one-time Google setup (required for uploads).
 
-### 2️⃣ Install FFmpeg (Recommended)
+### Option B — From source with `start.bat` (automatic)
 
-**Option A - winget (Automatic):**
-```powershell
-winget install Gyan.FFmpeg
-```
-Verify: `ffmpeg -version` and `ffprobe -version`
+1. Install Python 3.11+ from [python.org/downloads](https://www.python.org/downloads/)
+   (check **"Add python.exe to PATH"**).
+2. Double-click **`start.bat`**: it creates the environment, installs
+   dependencies and launches the app.
+3. Video generation needs FFmpeg on PATH (`winget install Gyan.FFmpeg`),
+   or set its path later in **File > Settings**.
+4. Continue below with the one-time Google setup (required for uploads).
 
-**Option B - Manual:**
-1. Download from [gyan.dev/ffmpeg/builds](https://www.gyan.dev/ffmpeg/builds/)
-2. Extract to `C:\ffmpeg\` (it must contain `bin\ffmpeg.exe`)
-3. Add `C:\ffmpeg\bin` to the PATH or configure it in **File > Settings**
-
-### 3️⃣ Set Up Google Cloud OAuth
+### Set Up Google Cloud OAuth (required once, everyone)
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com/) and create a project (e.g. `trakkout`)
 2. **APIs & Services > Library**: find **YouTube Data API v3** → press **Enable**
@@ -92,17 +85,20 @@ Verify: `ffmpeg -version` and `ffprobe -version`
    - Application type: **Desktop app**, name: `TRAKKOUT Desktop`
    - **Download JSON** → save as `%APPDATA%\TRAKKOUT\client_secrets.json`
 
-### 4️⃣ Enable YouTube Data API v3
+### Enable YouTube Data API v3
 
 Without it you will see the clear error: *"YouTube Data API v3 is not enabled…"*. Enable it in the Cloud Console and wait a few minutes.
 
-### 5️⃣ Install Project Dependencies
+### Manual setup (developers only)
+
+If you prefer the terminal over `start.bat`:
 
 ```powershell
 cd C:\path\to\trakkout
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+python -m venv venv
+venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python -m app.main
 ```
 
 ---
@@ -110,15 +106,8 @@ pip install -r requirements.txt
 ## 🎮 Basic Usage
 
 ### Start the App:
-```powershell
-# Option 1: Use the main script
-cd C:\path\to\trakkout
-.venv\Scripts\Activate.ps1
-python -m app.main
-
-# Option 2: Double-click run.bat
-run.bat
-```
+- **Portable `.exe`**: double-click `TRAKKOUT.exe`.
+- **From source**: double-click `start.bat` (or `run.bat` if your `venv` is already set up).
 
 ### Usage Flow:
 

@@ -1,15 +1,28 @@
 # PyInstaller spec for the portable one-file TRAKKOUT.exe.
 # Build with: venv\Scripts\python.exe build_exe.py
 # (or: venv\Scripts\python.exe -m PyInstaller TRAKKOUT.spec)
-# Output: dist\TRAKKOUT.exe (FFmpeg still required on PATH, not bundled).
+# Output: dist\TRAKKOUT.exe with ffmpeg.exe + ffprobe.exe bundled inside
+# (the spec locates them on PATH at build time, like build_exe.py does).
+import shutil
+
 from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
+
+def _bundle(name: str) -> list[tuple[str, str]]:
+    path = shutil.which(name)
+    if not path:
+        print(f"WARNING: {name} not found on PATH, the exe will NOT be portable.")
+        return []
+    print(f"Bundling: {path}")
+    return [(path, ".")]
+
+
 a = Analysis(
     ["app\\main.py"],
     pathex=["."],
-    binaries=[],
+    binaries=_bundle("ffmpeg") + _bundle("ffprobe"),
     datas=[
         ("app\\resources", "app\\resources"),
         ("app\\ui\\style.qss", "app\\ui"),

@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,6 +66,25 @@ def _popen(cmd: list[str]) -> subprocess.Popen:
     return subprocess.Popen(cmd, **kwargs)
 
 
+def _bundled_bin(name: str) -> str | None:
+    """ffmpeg/ffprobe shipped inside the PyInstaller exe (extracted to sys._MEIPASS)."""
+    base = getattr(sys, "_MEIPASS", None)
+    if not base:
+        return None
+    candidate = Path(base) / f"{name}.exe"
+    return str(candidate) if candidate.exists() else None
+
+
+def ffmpeg_bin() -> str:
+    """Preferred ffmpeg binary: bundled in exe builds, else PATH."""
+    return _bundled_bin("ffmpeg") or "ffmpeg"
+
+
+def ffprobe_bin() -> str:
+    """Preferred ffprobe binary: bundled in exe builds, else PATH."""
+    return _bundled_bin("ffprobe") or "ffprobe"
+
+
 def find_system_font() -> str:
     candidates = []
     if os.name == "nt":
@@ -109,6 +129,12 @@ class FFmpegService:
         p = self.ffmpeg_path if name == "ffmpeg" else self.ffprobe_path
         if Path(p).exists():
             return str(Path(p))
+        if getattr(sys, "frozen", False):
+            # Inside the exe: prefer the bundled binary over anything on PATH
+            # (version-matched with the release).
+            bundled = _bundled_bin(name)
+            if bundled:
+                return bundled
         found = shutil.which(p) or shutil.which(name)
         return found or p
 
