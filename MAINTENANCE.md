@@ -37,7 +37,8 @@ trakkout/
 ├── app/config/settings.py   settings.json in %APPDATA%\TRAKKOUT.
 ├── app/utils/beat_names.py  Title/BPM/key parser from the file name.
 ├── app/resources/templates/ Presets (Free Standard.json). Recreated if missing.
-├── build_exe.py + TRAKKOUT.spec  Portable recipe (PyInstaller, one-file).
+├── start.bat                One-click first-run setup + launch (Windows).
+├── build_exe.py + TRAKKOUT.spec  Portable recipe (PyInstaller, one-file, FFmpeg bundled).
 └── requirements.txt         Dependencies pinned by range (>=).
 ```
 
@@ -102,8 +103,12 @@ directly; always through `VideoGenerator`, `YouTubeService` and
 - Square cropping uses `crop='min(iw,ih)':'min(iw,ih)'`, stable syntax
   for years; watch `gblur` and `drawtext` (the font is auto-detected in
   `find_system_font()`).
-- The app requires FFmpeg on PATH and warns when missing: not bundling it
-  in the exe is a conscious decision (license + size).
+- The portable exe bundles `ffmpeg.exe` + `ffprobe.exe` (located on PATH
+  at build time by `build_exe.py` / `TRAKKOUT.spec`). At runtime the app
+  prefers the bundled binaries when frozen (`_bundled_bin()`), while an
+  explicit path in **File > Settings** always wins. Source runs still need
+  FFmpeg on PATH. To refresh the bundled FFmpeg version, update it on the
+  build machine and recompile.
 
 ## 6. Rebuilding the portable exe
 
@@ -117,7 +122,8 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - Quick check: start the exe with `QT_QPA_PLATFORM=offscreen`,
   it must stay alive 20 s without exiting.
 - `build/` and `dist/` are git-ignored: the exe ships via
-  GitHub Releases, never committed.
+  GitHub Releases, never committed. Expect a big file (Qt + FFmpeg
+  bundled, well over 100 MB).
 
 ## 7. Decided behaviors (not bugs)
 
