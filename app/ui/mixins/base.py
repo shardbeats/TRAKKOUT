@@ -61,12 +61,14 @@ class FeedbackMixin:
         QMessageBox.information(self, "Expired token",
                                 f"{body}Press 'Connect account' to authorize again.")
 
-    def _log_history(self, entry) -> None:
+    def _log_history(self, entry) -> int | None:
         try:
-            self.history.add(entry)
+            row_id = self.history.add(entry)
             self._refresh_history_table()
+            return int(row_id)
         except Exception as exc:
             log.warning("Could not save history: %s", exc)
+            return None
 
     def _open_settings(self):
         dlg = SettingsDialog(self.store, self)

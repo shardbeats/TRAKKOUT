@@ -73,6 +73,7 @@ class GenerateUploadMixin:
         self._op_start = time.time()
         self._op_total = clip_len
         self._last_trim = (vs.trim_start, vs.trim_end)
+        self._last_gen_audio = audio
         self._set_status(f"Generating video… -> {out.name}")
         self.ffmpeg_worker = FFmpegWorker(self.video_gen, cover, audio, str(out), vs, ov, self)
         self.ffmpeg_worker.progress.connect(self._on_ff_progress)
@@ -94,7 +95,7 @@ class GenerateUploadMixin:
         self._set_status("Video generated successfully.")
         QMessageBox.information(self, "Video", f"Video generated successfully.\n{path}")
         trim_start, trim_end = self._last_trim
-        self._log_history(HistoryEntry(
+        new_id = self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip() or Path(path).stem,
             audio_path=self.ed_audio.text().strip(), video_path=path,
             channel_id="", channel_title="", status="Generated",
@@ -103,6 +104,7 @@ class GenerateUploadMixin:
             category_id=str(self.cb_cat.currentData() or "10"),
             privacy=self.cb_privacy.currentText(),
             trim_start=trim_start, trim_end=trim_end))
+        self._rotate_history_link(new_id)
 
     def _on_ff_fail(self, msg: str):
         self._set_busy(False)
@@ -110,9 +112,10 @@ class GenerateUploadMixin:
         self._set_status("Error generating the video.")
         log.error("Error generating the video: %s", msg)
         QMessageBox.critical(self, "Generate video", f"Could not generate the video.\n{msg}")
-        self._log_history(HistoryEntry(
+        new_id = self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip(), audio_path=self.ed_audio.text().strip(),
             status="Failed", error=msg[:500]))
+        self._rotate_history_link(new_id)
 
     # ================= preview =================
 
@@ -215,7 +218,7 @@ class GenerateUploadMixin:
         scheduled = bool(getattr(self, "_last_publish_at", ""))
         self._set_status("Upload completed (scheduled)." if scheduled else "Upload completed.")
         trim_start, trim_end = self._last_trim
-        self._log_history(HistoryEntry(
+        new_id = self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip(), audio_path=self.ed_audio.text().strip(),
             video_path=self.current_video, channel_id=result.get("channel_id", ""),
             channel_title=cht, video_id=vid, video_url=url,
@@ -225,6 +228,7 @@ class GenerateUploadMixin:
             tags=self.ed_tags.text().strip(),
             category_id=str(self.cb_cat.currentData() or "10"),
             trim_start=trim_start, trim_end=trim_end))
+        self._rotate_history_link(new_id)
         box = QMessageBox(self)
         box.setWindowTitle("Upload complete")
         extra = (f"\nScheduled: {describe_rfc3339_in_tz(self._last_publish_at, self.cb_tz.currentText())}"
@@ -239,9 +243,10 @@ class GenerateUploadMixin:
         self._set_busy(False)
         self._set_status("Upload error.")
         QMessageBox.critical(self, "Upload to YouTube", f"Could not upload the video.\n{msg}")
-        self._log_history(HistoryEntry(
+        new_id = self._log_history(HistoryEntry(
             beat_name=self.ed_beat.text().strip(), video_path=self.current_video,
             status="Failed", error=str(msg)[:500]))
+        self._rotate_history_link(new_id)
 
     def _on_cancel(self):
         if self.ffmpeg_worker and self.ffmpeg_worker.isRunning():
