@@ -17,6 +17,110 @@ log = logging.getLogger(__name__)
 
 
 class QueueHistoryMixin:
+    # ================= history autosave (B+C) =================
+    # Link = entry being edited (visible highlight). Dirty = pending
+    # keystrokes flushed after a debounce, on selection change, or on close.
+
+    def _wire_history_autosave(self):
+        for w in (self.ed_beat, self.ed_title, self.ed_tags):
+            w.textChanged.connect(lambda _t: self._mark_history_dirty())
+        self.ed_desc.textChanged.connect(lambda: self._mark_history_dirty())
+        self.cb_cat.currentIndexChanged.connect(lambda _i: self._mark_history_dirty())
+        self.cb_privacy.currentTextChanged.connect(lambda _t: self._mark_history_dirty())
+        self.sp_trim_start.valueChanged.connect(lambda _v: self._mark_history_dirty())
+        self.sp_trim_end.valueChanged.connect(lambda _v: self._mark_history_dirty())
+        self.tbl_hist.itemSelectionChanged.connect(self._on_history_selection_changed)
+
+    def _mark_history_dirty(self):
+        if self._history_link_id is None:
+            return
+        self._history_dirty = True
+        self._history_save_timer.start(800)
+
+    def _set_history_link(self, entry_id: int | None) -> None:
+        self._history_save_timer.stop()
+        self._history_link_id = entry_id
+        self._history_dirty = False
+        self._refresh_history_table()
+        if entry_id is not None:
+            self._set_status(f"Editing history #{entry_id} (auto-save on).")
+
+    def _flush_history_link(self) -> None:
+        """Persist pending form edits to the linked entry (no-op when clean)."""
+        if self._history_link_id is None or not self._history_dirty:
+            return
+        try:
+            entries = self.history.list(200)
+        except Exception as exc:
+            log.warning("History autosave: %s", exc)
+            return
+        entry = next((e for e in entries if e.id == self._history_link_id), None)
+        if entry is None:
+            self._set_history_link(None)
+            return
+        self._write_form_to_history_entry(entry)
+        try:
+            self.history.update(entry)
+        except Exception as exc:
+            log.warning("History autosave: %s", exc)
+            return
+        self._history_dirty = False
+        self._refresh_history_row(entry)
+        self._set_status(f"History #{entry.id} saved.")
+
+    def _rotate_history_link(self, new_id: int | None) -> None:
+        """Point the autosave link at a freshly created entry.
+
+        Pending edits are flushed to the previous link first, but only when
+        the form still shows the audio they belong to.
+        """
+        current = self.ed_audio.text().strip()
+        if current and current == (getattr(self, "_last_gen_audio", "") or ""):
+            self._flush_history_link()
+        self._set_history_link(new_id)
+
+    def _write_form_to_history_entry(self, entry) -> None:
+        entry.beat_name = self.ed_beat.text().strip() or entry.beat_name
+        entry.audio_path = self.ed_audio.text().strip() or entry.audio_path
+        if self.current_video and Path(self.current_video).exists():
+            entry.video_path = self.current_video
+        entry.title = self.ed_title.text().strip()
+        entry.description = self.ed_desc.toPlainText()
+        entry.tags = self.ed_tags.text().strip()
+        entry.category_id = str(self.cb_cat.currentData() or "10")
+        entry.privacy = self.cb_privacy.currentText()
+        entry.trim_start = float(self.sp_trim_start.value())
+        entry.trim_end = float(self.sp_trim_end.value())
+
+    def _refresh_history_row(self, entry) -> None:
+        """Update one row in place (no full rebuild, selection preserved)."""
+        from PySide6.QtGui import QColor
+        try:
+            entries = self.history.list(200)
+        except Exception:
+            return
+        rows = {e.id: r for r, e in enumerate(entries)}
+        r = rows.get(entry.id)
+        if r is None or r >= self.tbl_hist.rowCount():
+            self._refresh_history_table()
+            return
+        status = f"✓ {entry.status}" if entry.status in self._UPLOADED_STATUS else (entry.status or "")
+        vals = [entry.created_at, entry.beat_name, entry.channel_title or entry.channel_id,
+                entry.video_id, entry.video_url, status]
+        for c, v in enumerate(vals):
+            item = QTableWidgetItem(str(v or ""))
+            if entry.status in self._UPLOADED_STATUS:
+                item.setBackground(QColor("#1e4d2b"))
+            elif entry.id == self._history_link_id:
+                item.setBackground(QColor("#2e3d55"))
+            self.tbl_hist.setItem(r, c, item)
+
+    def _on_history_selection_changed(self):
+        # Viewing other rows must not lose pending edits: flush first.
+        # The link stays (viewing is not editing).
+        if self._history_link_id is not None and self._history_dirty:
+            self._flush_history_link()
+
     def _queue_add_current(self):
         audio = self.ed_audio.text().strip()
         cover = self.ed_cover.text().strip()
@@ -131,6 +235,8 @@ class QueueHistoryMixin:
                     self, "Vertical videos",
                     f"{len(long_names)} vertical video(s) exceed 3 minutes and will publish "
                     "as regular videos, not Shorts:\n" + "\n".join(long_names[:8]))
+        self._flush_history_link()
+        self._set_history_link(None)
         self._set_busy(True)
         worker = BatchGenerateWorker(self.video_gen, [vars_for(i) for i in items], vs, ov,
                                      self.settings.output_dir, self)
@@ -177,6 +283,8 @@ class QueueHistoryMixin:
         if not self.yt.is_connected():
             QMessageBox.warning(self, "Queue", "Connect Google first.")
             return
+        self._flush_history_link()
+        self._set_history_link(None)
         self._set_busy(True)
         worker = BatchUploadWorker(self.yt, [vars_for(i) for i in items], self)
         worker.item_started.connect(lambda iid: self.queue.set_status(iid, "Uploading") or self._refresh_queue_table())
@@ -230,6 +338,8 @@ class QueueHistoryMixin:
                 item = QTableWidgetItem(str(v or ""))
                 if e.status in self._UPLOADED_STATUS:
                     item.setBackground(QColor("#1e4d2b"))
+                elif e.id == self._history_link_id:
+                    item.setBackground(QColor("#2e3d55"))
                 self.tbl_hist.setItem(r, c, item)
 
     def _history_open_selected(self):
@@ -257,23 +367,14 @@ class QueueHistoryMixin:
         if not 0 <= r < len(entries):
             return
         e = entries[r]
-        e.beat_name = self.ed_beat.text().strip() or e.beat_name
-        e.audio_path = self.ed_audio.text().strip() or e.audio_path
-        if self.current_video and Path(self.current_video).exists():
-            e.video_path = self.current_video
-        e.title = self.ed_title.text().strip()
-        e.description = self.ed_desc.toPlainText()
-        e.tags = self.ed_tags.text().strip()
-        e.category_id = str(self.cb_cat.currentData() or "10")
-        e.privacy = self.cb_privacy.currentText()
-        e.trim_start = float(self.sp_trim_start.value())
-        e.trim_end = float(self.sp_trim_end.value())
+        self._write_form_to_history_entry(e)
         try:
             self.history.update(e)
         except Exception as exc:
             QMessageBox.warning(self, "History", f"Could not update entry.\n{exc}")
             return
-        self._refresh_history_table()
+        self._history_dirty = False
+        self._set_history_link(e.id)
         self._set_status(f"History entry updated: {e.beat_name or e.title}")
 
     def _history_load_selected(self):
@@ -311,6 +412,7 @@ class QueueHistoryMixin:
         self._update_trim_range()
         if e.video_path:
             self.current_video = e.video_path
+        self._set_history_link(e.id)
         self._show_view(0)
         self._set_status(f"Loaded from history: {e.beat_name or e.title or e.video_path}")
 
@@ -318,4 +420,4 @@ class QueueHistoryMixin:
         ret = QMessageBox.question(self, "History", "Clear all local history?")
         if ret == QMessageBox.Yes:
             self.history.clear()
-            self._refresh_history_table()
+            self._set_history_link(None)

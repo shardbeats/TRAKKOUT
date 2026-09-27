@@ -129,8 +129,11 @@ venv\Scripts\python.exe build_exe.py --check  # prerequisites only
 - **Batch uses the item's frozen metadata** (from when it was queued);
   single generation uses the live form. Decided on purpose: don't change
   without reviewing `_on_batch_gen_done` and `BatchUploadWorker`.
-- **History:** created only on Generate/Upload; touch-ups are manual
-  with **Update from form**. No per-keystroke auto-save.
+- **History:** entries are created on Generate/Upload; the form auto-saves
+  into the *linked* entry (highlighted row) after an 800 ms pause, on row
+  switch, and on close. Linking happens on Load and on new Generate/Upload
+  entries; batch start unlinks. The manual **Update from form** button still
+  works and (re)links its entry.
 - **Shorts:** vertical + ≤3 min warns, doesn't block; YouTube classifies on its own.
 - **Tests:** suite in `tests/` (`python -m pytest tests -q`, CI in `.github/workflows/tests.yml`).
   Covers pure logic without GUI/network/FFmpeg (utils, models, templates, settings, SQLite stores,

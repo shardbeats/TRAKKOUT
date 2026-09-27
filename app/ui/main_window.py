@@ -78,6 +78,15 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
         self._last_trim: tuple[float, float] = (0.0, 0.0)
         self._trim_audio_path = ""
         self._wave_audio_path = ""
+        self._last_gen_audio = ""
+        # History autosave (B+C): link = entry being edited, dirty = pending
+        # keystrokes, timer = debounce before flushing to SQLite.
+        self._history_link_id: int | None = None
+        self._history_dirty = False
+        self._history_save_timer = QTimer(self)
+        self._history_save_timer.setSingleShot(True)
+        self._history_save_timer.setInterval(800)
+        self._history_save_timer.timeout.connect(self._flush_history_link)
 
         self.setWindowTitle("TRAKKOUT")
         self.resize(1180, 820)
@@ -542,6 +551,7 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
         hb2.addStretch(1)
         hl.addLayout(hb2)
         self.views.addWidget(htab)
+        self._wire_history_autosave()
 
         # Log
         ltab = QWidget(); ll = QVBoxLayout(ltab)
@@ -556,6 +566,10 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
 
 
     def closeEvent(self, event):  # noqa: N802
+        try:
+            self._flush_history_link()
+        except Exception:
+            pass
         self._persist_ui_to_settings()
         try:
             if self.ffmpeg_worker and self.ffmpeg_worker.isRunning():
