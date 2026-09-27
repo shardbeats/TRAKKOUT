@@ -1,6 +1,15 @@
 """Template loading/applying/editing (mixin)."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.ui.mixins.protocol import MainWindowProtocol as _MixinBase
+else:
+    _MixinBase = object
+
+
+
 import logging
 
 from PySide6.QtWidgets import QDialog, QMessageBox
@@ -11,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 
-class TemplatesMixin:
+class TemplatesMixin(_MixinBase):  # type: ignore[misc]
     def _reload_templates(self, select: str = ""):
         self.cb_template.clear()
 

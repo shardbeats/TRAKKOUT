@@ -1,6 +1,15 @@
 """Single video generation and upload + preview (mixin)."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.ui.mixins.protocol import MainWindowProtocol as _MixinBase
+else:
+    _MixinBase = object
+
+
+
 import logging
 import time
 import webbrowser
@@ -23,7 +32,7 @@ log = logging.getLogger(__name__)
 
 
 
-class GenerateUploadMixin:
+class GenerateUploadMixin(_MixinBase):  # type: ignore[misc]
     def _default_output(self) -> Path:
         ensure_dir(self.settings.output_dir)
         stem = safe_stem(self.ed_beat.text().strip() or Path(self.ed_audio.text()).stem
@@ -60,13 +69,12 @@ class GenerateUploadMixin:
             QMessageBox.warning(self, "Generate video", vt.message); return
         clip_start, clip_end = vs.clip_range(dur)
         clip_len = clip_end - clip_start
-        # Vertical videos over 3 min are not classified as Shorts.
-        from app.ui.mixins.collectors import SHORTS_MAX_SECONDS
-        if vs.is_vertical and clip_len > SHORTS_MAX_SECONDS:
-            QMessageBox.warning(
-                self, "Vertical video",
-                "This video is vertical but longer than 3 minutes, so YouTube will "
-                "treat it as a regular video, not a Short.\n\nGeneration continues anyway.")
+        # Vertical videos over 3 min are not classified as Shorts (Fase 5).
+        from app.services.clip_policy import single_shorts_warning, vertical_exceeds_shorts
+        if vertical_exceeds_shorts(vs, clip_len):
+            msg = single_shorts_warning(clip_len)
+            if msg:
+                QMessageBox.warning(self, "Vertical video", msg)
 
         self._persist_ui_to_settings()
         self._set_busy(True)

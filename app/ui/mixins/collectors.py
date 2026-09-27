@@ -1,25 +1,35 @@
 """Widget-to-model/settings readers (mixin)."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.ui.mixins.protocol import MainWindowProtocol as _MixinBase
+else:
+    _MixinBase = object
+
+
+
 import logging
 from pathlib import Path
 
 from app.ffmpeg.ffmpeg_service import FFmpegService
 from app.models.models import BeatMetadata, OverlaySettings, VideoSettings, YouTubeMetadata
+from app.services.clip_policy import SHORTS_MAX_SECONDS
 from app.services.video_generator import VideoGenerator
 from app.templates import parse_tags
 from app.utils.scheduling import local_to_utc_rfc3339
 
 log = logging.getLogger(__name__)
 
-#: Shorts auto-classification limit: vertical/square videos up to 3 min.
-SHORTS_MAX_SECONDS = 180
+#: Re-export canónico (vive en app.services.clip_policy).
+__all__ = ["CollectorsMixin", "SHORTS_MAX_SECONDS"]
 _HORIZONTAL_RES = ("1920x1080", "1280x720", "854x480")
 _VERTICAL_RES = ("1080x1920", "720x1280")
 
 
 
-class CollectorsMixin:
+class CollectorsMixin(_MixinBase):  # type: ignore[misc]
     def _load_settings_to_ui(self):
         s = self.settings
         self.ffmpeg = FFmpegService(s.ffmpeg_path, s.ffprobe_path)
@@ -200,29 +210,27 @@ class CollectorsMixin:
 
         Flow: the user links local audio/artwork (their legitimate license or
         download) and fills in the fields → TemplateEngine → YouTubeMetadata
-        → VideoGenerator.
+        → VideoGenerator. La fusión vive en metadata_factory (Fase 5).
         """
-        title = self.ed_beat.text().strip()
-        if not title and self.ed_audio.text().strip():
-            title = Path(self.ed_audio.text().strip()).stem
-        return BeatMetadata(
-            title=title or self.beat.title,
-            producer=self.ed_producer.text().strip() or self.beat.producer,
-            artist=self.ed_artist.text().strip(),
-            artist2=self.ed_artist2.text().strip(),
-            genre=self.ed_genre.text().strip(),
-            bpm=self.ed_bpm.text().strip(),
-            key=self.ed_key.text().strip(),
-            purchase_url=self.ed_purchase.text().strip(),
-            tags=[t.strip() for t in self.ed_tags.text().replace(";", ",").split(",") if t.strip()],
-            description=self.ed_desc.toPlainText(),
-            artwork_url=self.beat.artwork_url,
-            artwork_path=self.ed_cover.text().strip(),
-            audio_path=self.ed_audio.text().strip(),
-            preview_audio_url="",
-            source=self.beat.source,
-            fetched_at=self.beat.fetched_at,
-        )
+        from app.services.metadata_factory import build_beat_kwargs
+
+        return BeatMetadata(**build_beat_kwargs(
+            {
+                "title": self.ed_beat.text().strip(),
+                "producer": self.ed_producer.text().strip(),
+                "artist": self.ed_artist.text().strip(),
+                "artist2": self.ed_artist2.text().strip(),
+                "genre": self.ed_genre.text().strip(),
+                "bpm": self.ed_bpm.text().strip(),
+                "key": self.ed_key.text().strip(),
+                "purchase_url": self.ed_purchase.text().strip(),
+                "tags": self.ed_tags.text(),
+                "description": self.ed_desc.toPlainText(),
+                "artwork_path": self.ed_cover.text().strip(),
+                "audio_path": self.ed_audio.text().strip(),
+            },
+            linked_beat=self.beat,
+        ))
 
     def _collect_publish_at(self) -> tuple[str, str]:
         """Return (publish_at_utc, error). '' = publish immediately."""

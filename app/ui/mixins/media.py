@@ -1,6 +1,15 @@
 """Audio/artwork, drag & drop and media probing (mixin)."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.ui.mixins.protocol import MainWindowProtocol as _MixinBase
+else:
+    _MixinBase = object
+
+
+
 import logging
 from pathlib import Path
 
@@ -17,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 
-class MediaMixin:
+class MediaMixin(_MixinBase):  # type: ignore[misc]
     SOURCE_LABELS = {
         "manual": "manual",
         "local": "local file",
