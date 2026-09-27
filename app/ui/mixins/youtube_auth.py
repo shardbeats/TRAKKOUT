@@ -1,6 +1,15 @@
 """OAuth, channels and account status (mixin)."""
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.ui.mixins.protocol import MainWindowProtocol as _MixinBase
+else:
+    _MixinBase = object
+
+
+
 import logging
 
 from PySide6.QtWidgets import QMessageBox
@@ -12,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 
-class YouTubeAuthMixin:
+class YouTubeAuthMixin(_MixinBase):  # type: ignore[misc]
     def _startup_checks(self):
         st = self.ffmpeg.status()
         if not st.ffmpeg_ok or not st.ffprobe_ok:
