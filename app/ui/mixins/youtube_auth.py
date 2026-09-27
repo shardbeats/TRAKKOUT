@@ -48,7 +48,7 @@ class YouTubeAuthMixin:
         connected = self.yt.is_connected()
         self.lbl_yt_status.setText("Connected" if connected else "Disconnected")
         try:
-            self.lbl_yt_status.setStyleSheet("color:green;" if connected else "color:#aa5500;")
+            self.lbl_yt_status.setStyleSheet("color:#F5A623;" if connected else "color:#92959A;")
         except Exception as exc:
             log.warning(f"[YouTube] Error updating status: {exc}")
         # Sidebar footer with the real status (nothing hardcoded).

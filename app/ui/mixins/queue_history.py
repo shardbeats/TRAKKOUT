@@ -110,9 +110,10 @@ class QueueHistoryMixin:
         for c, v in enumerate(vals):
             item = QTableWidgetItem(str(v or ""))
             if entry.status in self._UPLOADED_STATUS:
-                item.setBackground(QColor("#1e4d2b"))
+                item.setBackground(QColor("#33363B"))
             elif entry.id == self._history_link_id:
-                item.setBackground(QColor("#2e3d55"))
+                item.setBackground(QColor("#3a2f1a"))
+                item.setForeground(QColor("#F5A623"))
             self.tbl_hist.setItem(r, c, item)
 
     def _on_history_selection_changed(self):
@@ -337,9 +338,10 @@ class QueueHistoryMixin:
             for c, v in enumerate(vals):
                 item = QTableWidgetItem(str(v or ""))
                 if e.status in self._UPLOADED_STATUS:
-                    item.setBackground(QColor("#1e4d2b"))
+                    item.setBackground(QColor("#33363B"))
                 elif e.id == self._history_link_id:
-                    item.setBackground(QColor("#2e3d55"))
+                    item.setBackground(QColor("#3a2f1a"))
+                    item.setForeground(QColor("#F5A623"))
                 self.tbl_hist.setItem(r, c, item)
 
     def _history_open_selected(self):
