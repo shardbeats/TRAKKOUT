@@ -1,14 +1,14 @@
-# 🎵 TRAKKOUT - Beat to YouTube Video Converter
+#  TRAKKOUT - Beat to YouTube Video Converter
 
 <div align="center">
   <img src="trakkout.ico" alt="TRAKKOUT Icon" width="100"/>
 </div>
 
-## 📖 Description
+##  Description
 
 **TRAKKOUT** is a modern, efficient desktop app for turning your music beats into full videos ready to publish on YouTube. It uses the official **YouTube Data API v3** and local **FFmpeg** to process your audio and artwork, generating an optimized MP4 video you can upload straight to your favorite channel.
 
-### 🎯 Workflow
+###  Workflow
 
 ```
 Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Upload to YouTube ✅
@@ -16,7 +16,7 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 
 ---
 
-## ✨ Main Features
+##  Main Features
 
 | Feature | Description |
 |---------------|-------------|
@@ -31,7 +31,7 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 
 ---
 
-## 🖥️ System Requirements
+##  System Requirements
 
 ### Recommended Minimum:
 - **Operating System**: Windows 10/11 (64-bit)
@@ -54,7 +54,7 @@ tzdata>=2024.1  # Windows only
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Quick start with `start.bat` (recommended)
 
@@ -98,7 +98,7 @@ python -m app.main
 
 ---
 
-## 🎮 Basic Usage
+##  Basic Usage
 
 ### Start the App:
 Double-click `start.bat` (or `run.bat` if your `venv` is already set up).
@@ -124,7 +124,7 @@ Double-click `start.bat` (or `run.bat` if your `venv` is already set up).
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 trakkout/
@@ -174,7 +174,7 @@ trakkout/
 
 ---
 
-## 🎨 Project Icon
+##  Project Icon
 
 The minimalist icon was created with **Pillow** with the following details:
 
@@ -184,7 +184,7 @@ The minimalist icon was created with **Pillow** with the following details:
 
 ---
 
-## 🎯 Available Template Variables
+##  Available Template Variables
 
 | Variable | Source | Example |
 |----------|--------|---------|
