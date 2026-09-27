@@ -84,13 +84,13 @@ class WaveformWidget(QWidget):
 
     def _paint(self, p: QPainter) -> None:
         w, h = float(self.width()), float(self.height())
-        p.fillRect(self.rect(), QColor("#16161d"))
+        p.fillRect(self.rect(), QColor("#151617"))
         if self._loading:
-            p.setPen(QColor("#888899"))
+            p.setPen(QColor("#92959A"))
             p.drawText(self.rect(), Qt.AlignCenter, "Loading waveform…")
             return
         if not self._peaks or self._duration <= 0:
-            p.setPen(QColor("#555566"))
+            p.setPen(QColor("#6E7175"))
             p.drawText(self.rect(), Qt.AlignCenter, "No waveform — load an audio file")
             return
         mid = h / 2.0
@@ -103,10 +103,10 @@ class WaveformWidget(QWidget):
         p.fillRect(QRectF(0, 0, xs, h), dim)
         p.fillRect(QRectF(xe, 0, w - xe, h), dim)
         # Selection wash.
-        p.fillRect(QRectF(xs, 0, max(0.0, xe - xs), h), QColor(77, 163, 255, 26))
+        p.fillRect(QRectF(xs, 0, max(0.0, xe - xs), h), QColor(245, 166, 35, 26))
         # Bars.
-        pen_in = QPen(QColor("#4da3ff"))
-        pen_out = QPen(QColor("#3a3a48"))
+        pen_in = QPen(QColor("#F5A623"))
+        pen_out = QPen(QColor("#45474A"))
         current_pen = None
         pad, span = self._PAD, max(1.0, w - 2.0 * self._PAD)
         for x_px in range(int(pad), int(w - pad) + 1):
@@ -121,15 +121,15 @@ class WaveformWidget(QWidget):
             y0 = mid - v * amp
             p.drawLine(x_px, int(y0), x_px, int(mid + v * amp))
         # Center line.
-        p.setPen(QPen(QColor("#2e2e3a")))
+        p.setPen(QPen(QColor("#33363B")))
         p.drawLine(int(pad), int(mid), int(w - pad), int(mid))
         # Handles + time labels.
-        handle_pen = QPen(QColor("#ffc107"))
+        handle_pen = QPen(QColor("#FFB52E"))
         handle_pen.setWidth(4)
         p.setPen(handle_pen)
         p.drawLine(int(xs), 0, int(xs), int(h))
         p.drawLine(int(xe), 0, int(xe), int(h))
-        p.setPen(QColor("#bbbbcc"))
+        p.setPen(QColor("#E5E5E5"))
         p.drawText(QRectF(xs - 44, 2, 88, 14), Qt.AlignCenter, fmt_hms(self._start))
         p.drawText(QRectF(xe - 44, 2, 88, 14), Qt.AlignCenter, fmt_hms(self._end))
 
