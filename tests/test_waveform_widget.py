@@ -9,9 +9,14 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import QEvent, QPointF, Qt
-from PySide6.QtGui import QMouseEvent
-from PySide6.QtWidgets import QApplication
+try:
+    from PySide6.QtCore import QEvent, QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+    from PySide6.QtWidgets import QApplication
+except ImportError as exc:
+    if "libEGL.so.1" in str(exc):
+        pytest.skip("PySide6 QtGui requires libEGL.so.1", allow_module_level=True)
+    raise
 
 from app.ffmpeg.waveform import time_to_x
 from app.ui.waveform import WaveformWidget
