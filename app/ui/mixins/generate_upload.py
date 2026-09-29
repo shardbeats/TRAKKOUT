@@ -76,6 +76,7 @@ class GenerateUploadMixin(_MixinBase):  # type: ignore[misc]
             if msg:
                 QMessageBox.warning(self, "Vertical video", msg)
 
+        self._fresh_cover = False  # sesión establecida con este cover
         self._persist_ui_to_settings()
         self._set_busy(True)
         self._op_start = time.time()
@@ -198,6 +199,7 @@ class GenerateUploadMixin(_MixinBase):  # type: ignore[misc]
         if ret != QMessageBox.Yes:
             return
         self._last_publish_at = meta.publish_at
+        self._fresh_cover = False  # sesión establecida con este cover
         self._persist_ui_to_settings()
         self._set_busy(True)
         self._op_start = time.time()

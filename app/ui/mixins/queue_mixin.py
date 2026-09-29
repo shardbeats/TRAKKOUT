@@ -127,6 +127,7 @@ class QueueMixin(_MixinBase):  # type: ignore[misc]
             msg = bulk_shorts_warning(long_names)
             if msg:
                 QMessageBox.information(self, "Vertical videos", msg)
+        self._fresh_cover = False  # sesión establecida con este cover
         self._flush_history_link()
         self._set_history_link(None)
         self._set_busy(True)
@@ -177,6 +178,7 @@ class QueueMixin(_MixinBase):  # type: ignore[misc]
         if not self.yt.is_connected():
             QMessageBox.warning(self, "Queue", "Connect Google first.")
             return
+        self._fresh_cover = False  # sesión establecida con este cover
         self._flush_history_link()
         self._set_history_link(None)
         self._set_busy(True)

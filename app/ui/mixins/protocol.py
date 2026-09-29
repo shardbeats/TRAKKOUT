@@ -47,6 +47,9 @@ class MainWindowProtocol(Protocol):
     _trim_audio_path: str
     _wave_audio_path: str
     _last_gen_audio: str
+    # Beat session (SessionMixin): el audio define la sesión.
+    _session_audio: str
+    _fresh_cover: bool
 
     # history autosave
     _history_link_id: int | None

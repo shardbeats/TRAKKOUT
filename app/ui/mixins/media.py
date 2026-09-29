@@ -17,7 +17,6 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
-from app.models.models import BeatMetadata
 from app.utils.files import human_size, is_audio_file, is_image_file
 from app.utils.formatting import fmt_hms
 from app.utils.validators import validate_audio_path, validate_image_path
@@ -69,12 +68,19 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
     # ================= media =================
 
     def _set_audio_file(self, f: str) -> None:
+        # Audio nuevo = sesión nueva: reset total + unlink (nunca
+        # sobreescribir la fila del historial vinculada).
+        self._begin_audio_session(f)
+        self._fresh_cover = False
         self.ed_audio.setText(f)
         self._probe_audio(f)
 
     def _set_cover_file(self, f: str) -> None:
         self.ed_cover.setText(f)
         self._probe_image(f)
+        # One-shot: si el usuario carga cover primero y audio después,
+        # el reset del audio conserva este cover.
+        self._fresh_cover = True
 
     def dragEnterEvent(self, event) -> None:  # noqa: N802
         if event.mimeData().hasUrls():
@@ -190,17 +196,16 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
             QMessageBox.warning(self, "Artwork", f"Could not read the image.\n{exc}")
 
     def _clear_media(self):
-        self.ed_audio.clear(); self.ed_cover.clear()
-        self.beat = BeatMetadata()
-        self.audio_info = None; self.image_info = None
-        self.lbl_cover_prev.clear()
-        self._trim_audio_path = ""
-        self._wave_audio_path = ""
-        self.sp_trim_start.setValue(0.0)
-        self.sp_trim_end.setValue(0.0)
-        self.wave.clear()
+        # Clear manual = reset total a defaults + unlink: lo próximo que
+        # se genere nace en un registro nuevo del historial.
+        self._flush_history_link()
+        self._set_history_link(None)
+        self._reset_form_to_defaults()
+        self._session_audio = ""
+        self._fresh_cover = False
         self._update_trim_range()
         self._refresh_media_info()
+        self._set_status("Cleared — ready for a new beat.")
 
     # ================= waveform =================
 
