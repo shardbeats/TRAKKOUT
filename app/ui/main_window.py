@@ -24,7 +24,7 @@ from app.services.queue_manager import QueueManager
 from app.templates import PresetManager, TemplateEngine
 from app.ui.mixins import (
     CollectorsMixin, FeedbackMixin, GenerateUploadMixin, MediaMixin,
-    QueueHistoryMixin, TemplatesMixin, YouTubeAuthMixin,
+    QueueHistoryMixin, SessionMixin, TemplatesMixin, YouTubeAuthMixin,
 )
 from app.ui.views.youtube_section import YOUTUBE_CATEGORIES
 from app.youtube.auth import GoogleAuth
@@ -37,7 +37,7 @@ __all__ = ["MainWindow", "YOUTUBE_CATEGORIES"]
 
 
 class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
-                   GenerateUploadMixin, QueueHistoryMixin, FeedbackMixin, QMainWindow):
+                   GenerateUploadMixin, QueueHistoryMixin, SessionMixin, FeedbackMixin, QMainWindow):
     def __init__(self, project_root: Path, store: SettingsStore) -> None:
         super().__init__()
         self.project_root = project_root
@@ -68,6 +68,9 @@ class MainWindow(MediaMixin, CollectorsMixin, TemplatesMixin, YouTubeAuthMixin,
         self._trim_audio_path = ""
         self._wave_audio_path = ""
         self._last_gen_audio = ""
+        # Beat session: el audio define la sesión (ver SessionMixin).
+        self._session_audio = ""
+        self._fresh_cover = False
         # History autosave (B+C): link = entry being edited, dirty = pending
         # keystrokes, timer = debounce before flushing to SQLite.
         self._history_link_id: int | None = None
