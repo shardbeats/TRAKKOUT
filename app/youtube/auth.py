@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -29,9 +30,21 @@ def _require_google_libs():
         from google.oauth2.credentials import Credentials  # noqa: F401
         from google_auth_oauthlib.flow import InstalledAppFlow  # noqa: F401
     except ImportError as exc:
+        log.error("Google OAuth libs import failed: %r", exc, exc_info=True)
+        missing = getattr(exc, "name", None) or exc
+        if bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS")):
+            raise OAuthConfigError(
+                "Esta copia portable de TRAKKOUT está incompleta: "
+                f"falta el componente '{missing}'.\n\n"
+                "Vuelve a descargar la última versión de TRAKKOUT "
+                "y sustituye el .exe. No necesitas instalar Python "
+                "ni usar pip.\n"
+                f"(Detalle técnico en logs/app.log: {exc!r})"
+            ) from exc
         raise OAuthConfigError(
                 "Missing Google libraries (google-auth, google-auth-oauthlib).\n"
-                "Install dependencies with: pip install -r requirements.txt"
+                "Install dependencies with: pip install -r requirements.txt\n"
+                f"(Detail: {exc!r})"
             ) from exc
 
 
@@ -161,9 +174,45 @@ class GoogleAuth:
         return creds
 
     def disconnect(self) -> None:
-        """Delete the local token (best-effort revocation, non-blocking)."""
+        """Revoke the server-side grant (best-effort) and delete token.json."""
+        try:
+            self.revoke_remote()
+        except Exception as exc:
+            log.warning("Could not revoke Google grant: %s", exc)
         try:
             if self.token_path.exists():
                 self.token_path.unlink()
         except Exception as exc:
             log.warning("Could not delete token.json: %s", exc)
+
+    def revoke_remote(self, timeout: float = 5.0) -> bool:
+        """Ask Google to invalidate the stored refresh/access token.
+
+        Best-effort and non-blocking: offline machines or already-invalid
+        tokens simply return False and the local file is still deleted.
+        Without this call, 'Disconnect' only removed the local copy while
+        the grant stayed valid server-side (usable until expiry/revocation
+        at myaccount.google.com/permissions).
+        """
+        try:
+            data = json.loads(self.token_path.read_text(encoding="utf-8"))
+            token = data.get("refresh_token") or data.get("access_token")
+        except Exception:
+            return False
+        if not token:
+            return False
+        try:
+            import urllib.parse
+            import urllib.request
+
+            req = urllib.request.Request(
+                "https://oauth2.googleapis.com/revoke",
+                data=urllib.parse.urlencode({"token": token}).encode("ascii"),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return 200 <= resp.status < 300
+        except Exception as exc:
+            log.warning("Could not revoke Google grant: %s", exc)
+            return False

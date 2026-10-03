@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,10 +36,37 @@ def _popen(cmd: list[str]) -> subprocess.Popen:
     return subprocess.Popen(cmd, **kwargs)
 
 
+def _bundled_tool_dirs() -> list[Path]:
+    """Dirs searched BEFORE PATH when frozen (installer puts FFmpeg here).
+
+    Layout created by installer/installer.iss:
+        TRAKKOUT.exe
+        ffmpeg\\ffmpeg.exe + ffprobe.exe
+    Also accepts the tools directly next to the exe or in bin\\.
+    """
+    if not (getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS")):
+        return []
+    try:
+        exe_dir = Path(sys.executable).resolve().parent
+    except Exception:
+        return []
+    return [exe_dir, exe_dir / "ffmpeg", exe_dir / "bin"]
+
+
 def resolve_tool(name: str, ffmpeg_path: str, ffprobe_path: str) -> str:
     p = ffmpeg_path if name == "ffmpeg" else ffprobe_path
-    if Path(p).exists():
+    if p and Path(p).exists():
         return str(Path(p))
+    # Frozen portable/installer: prefer the FFmpeg shipped with the app so
+    # inexpert users need nothing on PATH and no Settings tweak.
+    exe_name = name + (".exe" if os.name == "nt" else "")
+    for d in _bundled_tool_dirs():
+        candidate = d / exe_name
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError:
+            continue
     found = shutil.which(p) or shutil.which(name)
     return found or p
 
@@ -74,11 +102,14 @@ def require_tools(ffmpeg_path: str, ffprobe_path: str) -> ToolStatus:
     from app.ffmpeg.errors import FFmpegNotFoundError
 
     st = query_status(ffmpeg_path, ffprobe_path)
+    frozen = bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"))
+    hint = ("Reinstala TRAKKOUT con el instalador oficial (incluye FFmpeg)."
+            if frozen else
+            "Install FFmpeg https://www.gyan.dev/ffmpeg/builds/ or 'winget install Gyan.FFmpeg') "
+            "and make sure they are on the PATH, or set the path in Settings.")
     if not st.ffmpeg_ok and not st.ffprobe_ok:
         raise FFmpegNotFoundError(
-            "FFmpeg and FFprobe were not found.\n"
-            "Install FFmpeg https://www.gyan.dev/ffmpeg/builds/ or 'winget install Gyan.FFmpeg') "
-            "and make sure they are on the PATH, or set the path in Settings."
+            "FFmpeg and FFprobe were not found.\n" + hint
         )
     if not st.ffmpeg_ok:
         raise FFmpegNotFoundError("FFmpeg not found. Check the path in Settings.")

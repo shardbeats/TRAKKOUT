@@ -6,13 +6,50 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
 
 
+def _is_frozen() -> bool:
+    return bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS"))
+
+
+def _bundled_templates_dir() -> Path:
+    """Read-only dir with the presets shipped inside the exe/source tree."""
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        return Path(meipass) / "app" / "resources" / "templates"
+    return Path(__file__).resolve().parent.parent / "resources" / "templates"
+
+
 def _default_dir() -> Path:
+    # Frozen: presets must live in a writable folder (APPDATA), never in
+    # _MEIPASS (temp, read-only, deleted on exit). Seed it once from the
+    # bundled defaults so a fresh install keeps working offline.
+    if _is_frozen():
+        if os.name == "nt":
+            base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+            d = Path(base) / "TRAKKOUT" / "presets"
+        else:
+            d = Path.home() / ".trakkout" / "presets"
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            bundled = _bundled_templates_dir()
+            if bundled.is_dir() and not any(d.glob("*.json")):
+                import shutil
+
+                for src in bundled.glob("*.json"):
+                    try:
+                        shutil.copy2(src, d / src.name)
+                    except OSError:
+                        pass
+        except OSError:
+            pass
+        return d
     d = Path(__file__).resolve().parent.parent / "resources" / "templates"
     d.mkdir(parents=True, exist_ok=True)
     return d
@@ -54,6 +91,22 @@ DEFAULT_TEMPLATE: dict[str, str] = {
 }
 
 
+def _sanitize_preset_name(preset_name: str) -> str:
+    """Reject names that could escape the presets dir (../, separators...).
+
+    Only the local user could type these into their own dialog (self-attack),
+    but rejecting them costs nothing and keeps list/get/save/delete coherent.
+    """
+    name = (preset_name or "").strip()
+    if not name or name in (".", ".."):
+        raise ValueError("Preset name is required.")
+    if any(sep in preset_name for sep in ("/", "\\", ":", "*", "?", '"', "<", ">", "|")):
+        raise ValueError(f"Invalid preset name: {preset_name!r}")
+    if preset_name != name or preset_name.startswith("."):
+        raise ValueError(f"Invalid preset name: {preset_name!r}")
+    return name
+
+
 class PresetManager:
     """CRUD for template presets in JSON files."""
 
@@ -61,7 +114,7 @@ class PresetManager:
         self._dir = Path(presets_dir) if presets_dir else _default_dir()
 
     def preset_path(self, preset_name: str) -> Path:
-        return self._dir / f"{preset_name}.json"
+        return self._dir / f"{_sanitize_preset_name(preset_name)}.json"
 
     def _read_json(self, path: Path) -> dict[str, Any]:
         with open(path, encoding="utf-8") as f:
