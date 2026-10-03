@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+import sys
 import threading
 from collections.abc import Callable
 from pathlib import Path
@@ -98,9 +99,23 @@ class YouTubeService:
             from googleapiclient.errors import HttpError  # noqa: F401
             from googleapiclient.http import MediaFileUpload  # noqa: F401
         except ImportError as exc:
+            # Never hide the real cause: log it so logs/app.log shows exactly
+            # which module is missing inside the frozen exe.
+            log.error("YouTube libs import failed: %r", exc, exc_info=True)
+            missing = getattr(exc, "name", None) or exc
+            if bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS")):
+                raise YouTubeNotConfiguredError(
+                    "Esta copia portable de TRAKKOUT está incompleta: "
+                    f"falta el componente '{missing}'.\n\n"
+                    "Vuelve a descargar la última versión de TRAKKOUT "
+                    "y sustituye el .exe. No necesitas instalar Python "
+                    "ni usar pip.\n"
+                    f"(Detalle técnico en logs/app.log: {exc!r})"
+                ) from exc
             raise YouTubeNotConfiguredError(
                 "Missing YouTube libraries (google-api-python-client).\n"
-                "Run: pip install -r requirements.txt"
+                "Run: pip install -r requirements.txt\n"
+                f"(Detail: {exc!r})"
             ) from exc
 
     def client(self, force_new: bool = False):
@@ -200,14 +215,23 @@ class YouTubeService:
             from googleapiclient.errors import HttpError
             from googleapiclient.http import MediaFileUpload
             _has_google = True
-        except ImportError:
+        except ImportError as exc:
             HttpError = Exception  # type: ignore[assignment,misc]
             MediaFileUpload = None  # type: ignore[assignment]
             _has_google = self._service is not None  # mocks injected in tests only
             if not _has_google:
+                log.error("YouTube upload libs import failed: %r", exc, exc_info=True)
+                if bool(getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS")):
+                    raise YouTubeNotConfiguredError(
+                        "Esta copia portable de TRAKKOUT está incompleta.\n\n"
+                        "Vuelve a descargar la última versión de TRAKKOUT "
+                        "y sustituye el .exe. No necesitas instalar Python "
+                        "ni usar pip.\n"
+                        f"(Detalle técnico en logs/app.log: {exc!r})"
+                    ) from exc
                 raise YouTubeNotConfiguredError(
                     "Missing YouTube libraries (google-api-python-client).\n"
-                    "Run: pip install -r requirements.txt")
+                    f"Run: pip install -r requirements.txt\n(Detail: {exc!r})") from exc
 
         p = Path(str(video_path))
         if not p.exists():

@@ -4,6 +4,8 @@ __pycache__/
 venv/
 build/
 dist/
+dist-installer/
+thirdparty/
 .pytest_cache/
 logs/*.log
 *.mp4

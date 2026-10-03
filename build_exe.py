@@ -27,6 +27,11 @@ def main() -> int:
     if not SPEC.exists():
         print(f"ERROR: missing {SPEC.name}")
         return 1
+    for needed in ("app\\ui\\style.qss", "app\\resources\\templates",
+                   "pyinstaller_hooks\\runtime_hook_certs.py"):
+        if not (ROOT / needed).exists():
+            print(f"ERROR: missing {needed}")
+            return 1
     if shutil.which("ffmpeg") is None:
         print("WARNING: ffmpeg not found on PATH. The exe will still build, "
               "but video generation needs FFmpeg installed.")
@@ -36,6 +41,22 @@ def main() -> int:
         rc = run([python, "-m", "pip", "install", "pyinstaller"])
         if rc != 0:
             return rc
+    # The Google/YouTube connection fails in the exe when the BUILD env lacks
+    # the google libs (PyInstaller then bundles nothing). Ensure deps first.
+    print("Checking dependencies (requirements.txt)...")
+    rc = run([python, "-m", "pip", "install", "-r", "requirements.txt"])
+    if rc != 0:
+        print("ERROR: could not install requirements.txt")
+        return rc
+    rc = run([python, "-c",
+              "import certifi, httplib2, googleapiclient, google.auth, "
+              "google_auth_oauthlib, google_auth_httplib2, cryptography, "
+              "pyasn1_modules, uritemplate, pyparsing; "
+              "from googleapiclient.discovery import build; "
+              "print('google deps OK:', certifi.where())"])
+    if rc != 0:
+        print("ERROR: Google deps missing after pip install.")
+        return rc
     if "--check" in sys.argv:
         print("Prerequisites OK. Run without --check to compile.")
         return 0

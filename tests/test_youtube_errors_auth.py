@@ -77,7 +77,7 @@ def test_oauth_valid_installed_section(tmp_path: Path):
 
 
 def test_oauth_detects_google_download_name(tmp_path: Path):
-    dl = tmp_path / "client_secret_872538482962-abc123.apps.googleusercontent.com.json"
+    dl = tmp_path / "client_secret_123456789012-abc123.apps.googleusercontent.com.json"
     dl.write_text(json.dumps({"installed": {"client_id": "x"}}), encoding="utf-8")
     auth = GoogleAuth(tmp_path / "client_secrets.json", tmp_path / "token.json")
     assert auth.effective_secrets_path() == dl
