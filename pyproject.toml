@@ -1,6 +1,6 @@
 [project]
 name = "trakkout"
-version = "1.0.1"
+version = "1.0.2"
 description = "Turn beats into videos and publish them to YouTube"
 readme = "README.md"
 requires-python = ">=3.11"
