@@ -21,8 +21,9 @@ class ToolStatus:
     ffmpeg_version: str = ""
 
 
-def _run_capture(cmd: list[str]) -> subprocess.CompletedProcess:
-    kwargs: dict = {"capture_output": True, "text": True}
+def _run_capture(cmd: list[str], timeout: float = 30.0) -> subprocess.CompletedProcess:
+    """Run a probe/status command, always time-bounded (hang guard)."""
+    kwargs: dict = {"capture_output": True, "text": True, "timeout": timeout}
     if os.name == "nt":
         kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     return subprocess.run(cmd, **kwargs)
@@ -73,9 +74,12 @@ def resolve_tool(name: str, ffmpeg_path: str, ffprobe_path: str) -> str:
 
 def check_tool(exe: str, args: list[str]) -> bool:
     try:
-        r = _run_capture([exe, *args])
+        r = _run_capture([exe, *args], timeout=15.0)
         return r.returncode == 0
     except FileNotFoundError:
+        return False
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout checking %s", exe)
         return False
     except Exception as exc:
         log.warning("Error checking %s: %s", exe, exc)
@@ -90,7 +94,7 @@ def query_status(ffmpeg_path: str, ffprobe_path: str) -> ToolStatus:
     ver = ""
     if ff_ok:
         try:
-            r = _run_capture([ff, "-version"])
+            r = _run_capture([ff, "-version"], timeout=15.0)
             ver = (r.stdout or "").splitlines()[0][:120] if r.stdout else ""
         except Exception:
             ver = ""

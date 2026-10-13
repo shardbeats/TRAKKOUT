@@ -58,7 +58,11 @@ class QueueMixin(_MixinBase):  # type: ignore[misc]
             trim_start=vs.trim_start, trim_end=vs.trim_end,
             status="Pending",
         )
-        self.queue.add(item)
+        try:
+            self.queue.add(item)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Queue", str(exc))
+            return
         self._refresh_queue_table()
         if vs.has_trim:
             clip_s, clip_e = vs.clip_range(dur)

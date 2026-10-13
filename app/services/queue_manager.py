@@ -50,6 +50,9 @@ _NEW_COLUMNS = (("trim_start", "0"), ("trim_end", "0"))
 _DROP_ON_LOAD = ("Uploaded", "Scheduled")
 # In-flight states cannot resume after a restart: clean retry.
 _RETRY_ON_LOAD = ("Generating", "Uploading")
+# The queue table is fully rewritten on structural changes: cap it so a
+# runaway batch can't turn every add/status into an O(n) freeze.
+MAX_QUEUE_ITEMS = 500
 
 
 class QueueManager:
@@ -137,6 +140,10 @@ class QueueManager:
 
     # ---------- queue ops (every mutation persists) ----------
     def add(self, item: QueueItem) -> QueueItem:
+        if len(self._items) >= MAX_QUEUE_ITEMS:
+            raise ValueError(
+                f"Queue is full ({MAX_QUEUE_ITEMS} items). "
+                "Process or remove items before adding more.")
         if not item.id:
             item.id = next(self._ids)
         self._items.append(item)
@@ -169,4 +176,18 @@ class QueueManager:
             it.error = error
         if video_path:
             it.video_path = video_path
+        # Hot path (called per progress event in batches): single-row UPDATE
+        # instead of rewriting the whole table.
+        if self._db is not None:
+            try:
+                with self._connect() as conn:
+                    conn.execute(_SCHEMA)
+                    self._migrate(conn)
+                    conn.execute(
+                        "UPDATE queue SET status = ?, error = ?, video_path = ? WHERE id = ?",
+                        (it.status, it.error, it.video_path, item_id))
+                    conn.commit()
+                return
+            except Exception as exc:
+                log.warning("Could not persist queue status: %s", exc)
         self._save()

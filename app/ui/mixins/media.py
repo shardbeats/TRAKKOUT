@@ -219,6 +219,14 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
             return
         self._wave_audio_path = audio
         self.wave.set_loading(True)
+        # Never stack decodes: kill the previous waveform worker first.
+        prev = getattr(self, "waveform_worker", None)
+        try:
+            if prev is not None and prev.isRunning():
+                prev.cancel()
+                prev.wait(2000)
+        except Exception:
+            pass
         worker = WaveformWorker(self.ffmpeg, audio, parent=self)
         worker.finished_ok.connect(lambda peaks, a=audio: self._on_waveform_ready(a, peaks))
         worker.failed.connect(lambda msg, a=audio: self._on_waveform_failed(a, msg))

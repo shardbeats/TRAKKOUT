@@ -42,7 +42,7 @@ def build_command(
     audio_args, default_br = AUDIO_CODEC_MAP.get(vs.audio_format, AUDIO_CODEC_MAP["aac"])
     abr = vs.audio_bitrate or default_br
     cmd = [
-        ff_exe, "-y", "-v", "warning", "-progress", "pipe:1", "-nostats",
+        ff_exe, "-y", "-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats",
         "-loop", "1", "-framerate", str(max(1, vs.fps)), "-i", str(image_path),
     ]
     if start > 0:

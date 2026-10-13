@@ -12,7 +12,9 @@ Este módulo conserva los nombres importados por tests y UI.
 from __future__ import annotations
 
 import logging
+import queue
 import threading
+import time
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -33,6 +35,13 @@ from app.utils.files import human_size
 log = logging.getLogger(__name__)
 
 ProgressCallback = Callable[[float, float, float], None]  # (out_seconds, total, pct)
+
+# YouTube caps uploads at 12 h: refuse anything beyond that instead of
+# burning CPU/disk on a render the platform will reject.
+MAX_CLIP_SECONDS = 12 * 3600.0
+# A healthy ffmpeg emits -progress lines continuously. Silence longer than
+# this means it wedged (not just slow): kill it instead of hanging forever.
+STALL_TIMEOUT = 600.0
 
 # Re-exports de compatibilidad (tests / código externo).
 _AUDIO_CODEC_MAP = _render.AUDIO_CODEC_MAP
@@ -89,8 +98,10 @@ class FFmpegService:
     def validate_image(self, path: str | Path) -> ImageInfo:
         return _probe.validate_image(self.resolve("ffprobe"), path)
 
-    def get_waveform(self, audio_path: str | Path, buckets: int = 800) -> list[float]:
-        return _probe.waveform_peaks(self.resolve("ffmpeg"), audio_path, buckets)
+    def get_waveform(self, audio_path: str | Path, buckets: int = 800,
+                     cancel_event: Optional[threading.Event] = None) -> list[float]:
+        return _probe.waveform_peaks(self.resolve("ffmpeg"), audio_path, buckets,
+                                     cancel_event=cancel_event)
 
     # ---------- filter construction ----------
     def build_video_filter(self, vs: VideoSettings, ov: OverlaySettings) -> str:
@@ -137,6 +148,9 @@ class FFmpegService:
             raise VideoBuildError(
                 f"Invalid clip selection ({clip_start:.1f}s – {clip_end:.1f}s).")
         total = clip_end - clip_start
+        if total > MAX_CLIP_SECONDS:
+            raise VideoBuildError(
+                f"Clip too long ({total / 3600:.1f} h). YouTube caps uploads at 12 h.")
 
         out = Path(str(output_path))
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -158,18 +172,52 @@ class FFmpegService:
             assert proc.stdout is not None
             from collections import deque
             tail: deque[str] = deque(maxlen=25)
-            for line in proc.stdout:
-                if cancel_event.is_set():
-                    self._terminate(proc)
-                    raise VideoBuildError("Generation cancelled by the user.")
-                tail.append(line or "")
-                out_s = _render.parse_progress_line(line or "")
-                if out_s is not None and on_progress:
+            # Reader thread: readline() blocks, so it can't live in this
+            # thread together with the stall watchdog. Lines go through a
+            # queue; None is the EOF sentinel.
+            lines: queue.Queue = queue.Queue()
+            _EOF = object()
+
+            def _reader() -> None:
+                try:
+                    assert proc.stdout is not None
+                    for rline in proc.stdout:
+                        lines.put(rline or "")
+                except Exception:
+                    pass
+                finally:
+                    lines.put(_EOF)
+
+            reader = threading.Thread(target=_reader, name="ffmpeg-progress", daemon=True)
+            reader.start()
+            last_out = time.monotonic()
+            try:
+                while True:
+                    if cancel_event.is_set():
+                        self._terminate(proc)
+                        raise VideoBuildError("Generation cancelled by the user.")
                     try:
-                        pct = max(0.0, min(100.0, out_s / total * 100.0)) if total else 0.0
-                        on_progress(out_s, total, pct)
-                    except (ValueError, ZeroDivisionError):
-                        pass
+                        line = lines.get(timeout=1.0)
+                    except queue.Empty:
+                        if time.monotonic() - last_out > STALL_TIMEOUT:
+                            self._terminate(proc)
+                            raise VideoBuildError(
+                                "FFmpeg stalled (no progress for 10 min). "
+                                "Try a faster preset or a shorter clip.")
+                        continue
+                    if line is _EOF:
+                        break
+                    last_out = time.monotonic()
+                    tail.append(line or "")
+                    out_s = _render.parse_progress_line(line or "")
+                    if out_s is not None and on_progress:
+                        try:
+                            pct = max(0.0, min(100.0, out_s / total * 100.0)) if total else 0.0
+                            on_progress(out_s, total, pct)
+                        except (ValueError, ZeroDivisionError):
+                            pass
+            finally:
+                reader.join(timeout=5)
             rc = proc.wait()
             if cancel_event.is_set():
                 raise VideoBuildError("Generation cancelled by the user.")

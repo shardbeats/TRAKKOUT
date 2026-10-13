@@ -127,13 +127,18 @@ class WaveformWorker(QThread):
         self._svc = ffmpeg_service
         self._audio = audio
         self._buckets = buckets
+        self.cancel_event = threading.Event()
 
     def run(self) -> None:
         try:
-            peaks = self._svc.get_waveform(self._audio, self._buckets)
+            peaks = self._svc.get_waveform(
+                self._audio, self._buckets, cancel_event=self.cancel_event)
             self.finished_ok.emit(list(peaks))
         except Exception as exc:
             self.failed.emit(str(exc) or repr(exc))
+
+    def cancel(self) -> None:
+        self.cancel_event.set()
 
 
 def vars_for(item: QueueItem) -> dict:
@@ -239,8 +244,13 @@ class BatchGenerateWorker(_BatchBase):
 class BatchUploadWorker(_BatchBase):
     item_done = Signal(int, dict)
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._item_cancel = threading.Event()
+
     def cancel(self) -> None:
         self._cancel = True
+        self._item_cancel.set()
 
     def _run_item(self, item: dict, progress_cb) -> object:
         meta = YouTubeMetadata(
@@ -250,9 +260,13 @@ class BatchUploadWorker(_BatchBase):
             privacy=item.get("privacy", "private"),  # type: ignore[arg-type]
             publish_at=item.get("publish_at", "") or "",
         )
+        # Fresh event per item: a cancel from a previous item must not
+        # abort the next one, and the running chunk loop must see it.
+        self._item_cancel.clear()
         res = self.svc.upload_video(item["video_path"], meta,
                                     channel_id=item.get("channel_id", ""),
-                                    on_progress=progress_cb)
+                                    on_progress=progress_cb,
+                                    cancel_event=self._item_cancel)
         return dict(res)
 
     def _succeed(self, item_id: int, payload: object) -> None:
