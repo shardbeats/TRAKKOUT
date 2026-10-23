@@ -1,4 +1,4 @@
-/* TRAKKOUT — amber/gray dark theme (shared family palette). Tweak here without touching code. */
+/* TRAKKOUT — amber/gray dark theme (shared SUITE palette). Tweak here without touching code. */
 QMainWindow, QWidget {
     background-color: #151617;
     color: #E5E5E5;
