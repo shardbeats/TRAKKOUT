@@ -25,7 +25,7 @@ from app.utils.files import ensure_dir, human_size, safe_stem
 from app.utils.formatting import fmt_hms
 from app.utils.scheduling import describe_rfc3339_in_tz
 from app.utils.validators import (
-    validate_audio_path, validate_image_path, validate_trim, validate_youtube_metadata,
+    validate_artwork_path, validate_audio_path, validate_trim, validate_youtube_metadata,
 )
 
 log = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class GenerateUploadMixin(_MixinBase):  # type: ignore[misc]
         va = validate_audio_path(audio)
         if not va.ok:
             QMessageBox.warning(self, "Generate video", va.message); return
-        vi = validate_image_path(cover)
+        vi = validate_artwork_path(cover)
         if not vi.ok:
             QMessageBox.warning(self, "Generate video", vi.message); return
         try:

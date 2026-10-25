@@ -120,10 +120,12 @@ class FFmpegService:
         ov: OverlaySettings,
         duration: float,
         start: float = 0.0,
+        is_animated: bool = False,
     ) -> list[str]:
         return _render.build_command(
             self.resolve("ffmpeg"), image_path, audio_path,
-            output_path, vs, ov, duration, start=start)
+            output_path, vs, ov, duration, start=start,
+            is_animated=is_animated)
 
     # ---------- generation ----------
     def generate_video(
@@ -138,7 +140,7 @@ class FFmpegService:
     ) -> Path:
         self.require_tools()
         audio = self.validate_audio(audio_path)
-        self.validate_image(image_path)
+        artwork = self.validate_image(image_path)
         total = audio.duration
         if total <= 0:
             raise VideoBuildError("Invalid audio duration (0 s).")
@@ -160,7 +162,8 @@ class FFmpegService:
             raise VideoBuildError("Not enough disk space in the output folder.")
 
         cmd = self.build_command(image_path, audio_path, out, vs, ov, total,
-                                 start=clip_start)
+                                 start=clip_start,
+                                 is_animated=bool(getattr(artwork, "is_animated", False)))
         log.info("FFmpeg: %s", " ".join(cmd))
         self._cancel.clear()
         if cancel_event is None:

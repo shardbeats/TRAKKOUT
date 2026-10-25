@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .files import AUDIO_EXTS, IMAGE_EXTS
+from .files import ARTWORK_EXTS, AUDIO_EXTS
 
 
 @dataclass
@@ -32,22 +32,41 @@ def validate_audio_path(path: str) -> ValidationResult:
     return ValidationResult(True, "Valid audio.")
 
 
-def validate_image_path(path: str) -> ValidationResult:
+def validate_artwork_path(path: str) -> ValidationResult:
+    """Validate a still or animated artwork file (image, GIF, or video loop)."""
     if not path:
         return ValidationResult(False, "No artwork selected.")
     p = Path(path)
     if not p.exists():
-        return ValidationResult(False, f"Image does not exist:\n{p}")
+        return ValidationResult(False, f"Artwork does not exist:\n{p}")
     if not p.is_file():
-        return ValidationResult(False, f"Image path is not a file:\n{p}")
-    if p.suffix.lower() not in IMAGE_EXTS:
+        return ValidationResult(False, f"Artwork path is not a file:\n{p}")
+    if p.suffix.lower() not in ARTWORK_EXTS:
         return ValidationResult(
             False,
-            f"Unsupported image format ({p.suffix or 'no extension'}). "
-            f"Supported formats: {', '.join(sorted(IMAGE_EXTS))}.",
+            f"Unsupported artwork format ({p.suffix or 'no extension'}). "
+            f"Supported formats: {', '.join(sorted(ARTWORK_EXTS))}.",
         )
     if p.stat().st_size == 0:
-        return ValidationResult(False, "Image is empty (0 bytes).")
+        return ValidationResult(False, "Artwork is empty (0 bytes).")
+    return ValidationResult(True, "Valid artwork.")
+
+
+def validate_image_path(path: str) -> ValidationResult:
+    """Backwards-compatible alias kept for existing callers and tests.
+
+    Artwork may now be a still image, a GIF, or a video loop, so this
+    simply rewords the artwork validation messages to the legacy "image"
+    terms.
+    """
+    result = validate_artwork_path(path)
+    if not result.ok:
+        msg = result.message
+        msg = msg.replace("Artwork does not exist", "Image does not exist")
+        msg = msg.replace("Artwork path is not a file", "Image path is not a file")
+        msg = msg.replace("Unsupported artwork format", "Unsupported image format")
+        msg = msg.replace("Artwork is empty", "Image is empty")
+        return ValidationResult(False, msg)
     return ValidationResult(True, "Valid image.")
 
 

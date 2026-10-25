@@ -6,7 +6,14 @@ from pathlib import Path
 
 
 AUDIO_EXTS = {".mp3", ".wav", ".m4a", ".flac", ".ogg", ".opus", ".aac", ".wma", ".aiff", ".aif", ".alac"}
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff", ".gif", ".apng"}
+# Video containers accepted as animated artwork (looped to match the audio).
+VIDEO_ARTWORK_EXTS = {".mp4", ".mov", ".m4v", ".webm"}
+# Any file usable as artwork: still image, animated image, or short video loop.
+ARTWORK_EXTS = IMAGE_EXTS | VIDEO_ARTWORK_EXTS
+# Animated artwork: video loops plus animated image formats.
+ANIMATED_IMAGE_EXTS = {".gif", ".apng"}
+ANIMATED_ARTWORK_EXTS = VIDEO_ARTWORK_EXTS | ANIMATED_IMAGE_EXTS
 
 
 def human_size(num_bytes: int | float) -> str:
@@ -42,6 +49,18 @@ def is_audio_file(path: str | Path) -> bool:
 
 def is_image_file(path: str | Path) -> bool:
     return Path(str(path)).suffix.lower() in IMAGE_EXTS
+
+
+def is_video_artwork(path: str | Path) -> bool:
+    return Path(str(path)).suffix.lower() in VIDEO_ARTWORK_EXTS
+
+
+def is_animated_artwork(path: str | Path) -> bool:
+    return Path(str(path)).suffix.lower() in ANIMATED_ARTWORK_EXTS
+
+
+def is_artwork_file(path: str | Path) -> bool:
+    return Path(str(path)).suffix.lower() in ARTWORK_EXTS
 
 
 def safe_stem(name: str) -> str:

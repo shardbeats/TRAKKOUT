@@ -37,14 +37,25 @@ def build_command(
     ov: OverlaySettings,
     duration: float,
     start: float = 0.0,
+    is_animated: bool = False,
 ) -> list[str]:
+    """Build the ffmpeg command for a still or an animated artwork input.
+
+    Still artwork is looped as a single image (``-loop 1``). Animated
+    artwork (GIF/MP4) is looped at the input level (``-stream_loop -1``)
+    so short loops stretch to the full audio length; ``-shortest`` cuts
+    the output at the audio clip length either way.
+    """
     vf = build_video_filter(vs, ov)
     audio_args, default_br = AUDIO_CODEC_MAP.get(vs.audio_format, AUDIO_CODEC_MAP["aac"])
     abr = vs.audio_bitrate or default_br
     cmd = [
         ff_exe, "-y", "-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats",
-        "-loop", "1", "-framerate", str(max(1, vs.fps)), "-i", str(image_path),
     ]
+    if is_animated:
+        cmd += ["-stream_loop", "-1", "-i", str(image_path)]
+    else:
+        cmd += ["-loop", "1", "-framerate", str(max(1, vs.fps)), "-i", str(image_path)]
     if start > 0:
         cmd += ["-ss", f"{start:.3f}"]
     cmd += [

@@ -63,7 +63,46 @@ def audio_info(ffprobe_exe: str, path: str | Path) -> AudioInfo:
     )
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_frame_rate(value) -> float:
+    """Parse an ffprobe avg_frame_rate string ("30000/1001") to fps."""
+    try:
+        text = str(value or "").strip()
+        if "/" in text:
+            num, den = text.split("/", 1)
+            fps = float(num) / float(den)
+        else:
+            fps = float(text)
+        if fps != fps or fps == float("inf") or fps == float("-inf"):
+            return 0.0
+        return max(0.0, fps)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return 0.0
+
+
+def _probe_duration(data: dict, stream: dict) -> float:
+    for candidate in (stream.get("duration"), data.get("format", {}).get("duration")):
+        duration = _to_float(candidate)
+        if duration > 0:
+            return duration
+    return 0.0
+
+
 def image_info(ffprobe_exe: str, path: str | Path) -> ImageInfo:
+    """Probe artwork: still image, animated GIF, or short video loop.
+
+    Animated artwork is detected from the stream (frame count, duration)
+    or the container extension; still images report duration 0 and
+    is_animated False.
+    """
+    from app.utils.files import is_animated_artwork
+
     p = Path(str(path))
     if not p.exists():
         raise MediaProbeError(f"Image does not exist: {p}")
@@ -79,12 +118,29 @@ def image_info(ffprobe_exe: str, path: str | Path) -> ImageInfo:
         height = int(video.get("height") or 0)
     except (TypeError, ValueError):
         height = 0
+    duration = _probe_duration(data, video)
+    fps = _parse_frame_rate(video.get("avg_frame_rate") or video.get("r_frame_rate"))
+    try:
+        nb_frames = int(video.get("nb_frames") or 0)
+    except (TypeError, ValueError):
+        nb_frames = 0
+    # Note: ffprobe reports a default frame rate (e.g. 25 fps) even for
+    # still images, so fps alone is not an animation signal. Duration and
+    # frame count are: stills have neither.
+    is_animated = (
+        is_animated_artwork(p)
+        or nb_frames > 1
+        or duration > 0.0
+    )
     return ImageInfo(
         path=str(p),
         width=width,
         height=height,
         format_name=str(video.get("codec_name") or p.suffix.lstrip(".").lower()),
         size_bytes=p.stat().st_size,
+        duration=duration,
+        is_animated=is_animated,
+        fps=fps,
     )
 
 

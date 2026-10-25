@@ -86,6 +86,13 @@ class PreviewDialog(QDialog):
                 lbl.setPixmap(pm.scaled(480, 270, Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 lbl.setAlignment(Qt.AlignCenter)
                 layout.addWidget(lbl)
+            else:
+                # Video artwork (MP4/MOV) has no still preview: show its name.
+                from app.utils.files import is_video_artwork
+                if is_video_artwork(cover_path):
+                    lbl.setText(f"🎞️ Video artwork: {Path(cover_path).name}")
+                    lbl.setAlignment(Qt.AlignCenter)
+                    layout.addWidget(lbl)
         txt = QPlainTextEdit()
         txt.setReadOnly(True)
         txt.setPlainText(summary)

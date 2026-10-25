@@ -17,9 +17,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
-from app.utils.files import human_size, is_audio_file, is_image_file
+from app.utils.files import human_size, is_artwork_file, is_audio_file
 from app.utils.formatting import fmt_hms
-from app.utils.validators import validate_audio_path, validate_image_path
+from app.utils.validators import validate_artwork_path, validate_audio_path
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,8 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
                          f"{a.sample_rate or '-'} Hz | {human_size(a.size_bytes)}")
         if self.image_info is not None:
             im = self.image_info
-            lines.append(f"Artwork: {im.file_name} | {im.resolution} | {human_size(im.size_bytes)}")
+            kind = "animated" if getattr(im, "is_animated", False) else "still"
+            lines.append(f"Artwork ({kind}): {im.file_name} | {im.resolution} | {human_size(im.size_bytes)}")
         if self.beat.title or self.beat.producer:
             extra = []
             if self.beat.bpm:
@@ -61,9 +62,14 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
         self.lbl_source.setText(f"Source: {src}{link}")
         # thumbnail
         if self.image_info and Path(self.image_info.path).exists():
+            # QPixmap reads the first frame of GIFs; video files (MP4/MOV)
+            # cannot be previewed this way, so the label keeps its
+            # placeholder text instead of showing a stale thumbnail.
             pm = QPixmap(self.image_info.path)
             if not pm.isNull():
                 self.lbl_cover_prev.setPixmap(pm.scaled(120, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            elif getattr(self.image_info, "is_animated", False):
+                self.lbl_cover_prev.setText(f"🎞️ {self.image_info.file_name}")
 
     # ================= media =================
 
@@ -86,7 +92,7 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
         if event.mimeData().hasUrls():
             for u in event.mimeData().urls():
                 p = u.toLocalFile()
-                if p and (is_audio_file(p) or is_image_file(p)):
+                if p and (is_audio_file(p) or is_artwork_file(p)):
                     event.acceptProposedAction()
                     return
         event.ignore()
@@ -119,7 +125,7 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
 
     def _handle_dropped_files(self, paths: list[str], target: str | None = None) -> None:
         audios = [p for p in paths if is_audio_file(p)]
-        images = [p for p in paths if is_image_file(p)]
+        images = [p for p in paths if is_artwork_file(p)]
         if target == "audio" and paths:
             # Dropped onto the audio field: accept the first file even if the
             # extension is not on the list (validation will warn).
@@ -133,9 +139,9 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
         if images:
             self._set_cover_file(images[0])
         if not audios and not images:
-            self._set_status("Unsupported file: drop an audio file or an image.")
+            self._set_status("Unsupported file: drop an audio file or artwork (image, GIF, MP4).")
         elif len(paths) > len(audios) + len(images):
-            self._set_status("Some files were not audio/images and were skipped.")
+            self._set_status("Some files were not audio/artwork and were skipped.")
 
     def _pick_audio(self):
         f, _ = QFileDialog.getOpenFileName(
@@ -147,7 +153,9 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
     def _pick_cover(self):
         f, _ = QFileDialog.getOpenFileName(
             self, "Select artwork", "",
-            "Image (*.jpg *.jpeg *.png *.bmp *.webp *.tif *.tiff);;All (*)")
+            "Artwork (*.jpg *.jpeg *.png *.bmp *.webp *.gif *.apng *.mp4 *.mov *.m4v *.webm *.tif *.tiff);;"
+            "Image (*.jpg *.jpeg *.png *.bmp *.webp *.gif *.apng *.tif *.tiff);;"
+            "Video (*.mp4 *.mov *.m4v *.webm);;All (*)")
         if f:
             self._set_cover_file(f)
 
@@ -184,7 +192,7 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
             QMessageBox.warning(self, "Audio", f"Could not read the audio.\n{exc}")
 
     def _probe_image(self, path: str):
-        v = validate_image_path(path)
+        v = validate_artwork_path(path)
         if not v.ok:
             QMessageBox.warning(self, "Artwork", v.message)
             return
@@ -193,7 +201,7 @@ class MediaMixin(_MixinBase):  # type: ignore[misc]
             self.beat.artwork_path = path
             self._refresh_media_info()
         except Exception as exc:
-            QMessageBox.warning(self, "Artwork", f"Could not read the image.\n{exc}")
+            QMessageBox.warning(self, "Artwork", f"Could not read the artwork.\n{exc}")
 
     def _clear_media(self):
         # Clear manual = reset total a defaults + unlink: lo próximo que

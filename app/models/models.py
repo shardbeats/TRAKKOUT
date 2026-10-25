@@ -58,6 +58,9 @@ class ImageInfo:
     height: int = 0
     format_name: str = ""
     size_bytes: int = 0
+    duration: float = 0.0
+    is_animated: bool = False
+    fps: float = 0.0
 
     @property
     def file_name(self) -> str:
