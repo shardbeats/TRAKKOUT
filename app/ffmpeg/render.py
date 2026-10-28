@@ -17,6 +17,25 @@ AUDIO_CODEC_MAP = {
 TIME_RE = re.compile(r"out_time_ms=(\d+)")
 
 
+def vbv_caps(vs: VideoSettings) -> tuple[str, str]:
+    """Peak bitrate ceiling (maxrate/bufsize) for the output resolution.
+
+    CRF alone has no upper bound: noisy animated artwork (e.g. a dithered
+    GIF upscaled to 1080p) can push x264 past 30 Mbps, turning a normal
+    song into a ~1 GB file. The VBV cap only bites on those peaks;
+    typical content keeps its CRF quality untouched. Tiers follow the
+    YouTube upload recommendations for SDR (8 Mbps at 1080p30).
+    """
+    height = max(1, int(vs.height or 1080))
+    if height >= 1080:
+        maxrate, bufsize = ("20M", "40M") if vs.fps > 30 else ("12M", "24M")
+    elif height >= 720:
+        maxrate, bufsize = ("10M", "20M") if vs.fps > 30 else ("8M", "16M")
+    else:
+        maxrate, bufsize = ("6M", "12M") if vs.fps > 30 else ("5M", "10M")
+    return maxrate, bufsize
+
+
 def parse_progress_line(line: str) -> float | None:
     """Segundos renderizados según la línea `-progress pipe:1`, o None."""
     m = TIME_RE.search(line or "")
@@ -49,6 +68,7 @@ def build_command(
     vf = build_video_filter(vs, ov)
     audio_args, default_br = AUDIO_CODEC_MAP.get(vs.audio_format, AUDIO_CODEC_MAP["aac"])
     abr = vs.audio_bitrate or default_br
+    maxrate, bufsize = vbv_caps(vs)
     cmd = [
         ff_exe, "-y", "-nostdin", "-v", "warning", "-progress", "pipe:1", "-nostats",
     ]
@@ -63,7 +83,8 @@ def build_command(
         "-filter_complex", vf,
         "-map", "[vout]", "-map", "1:a:0?",
         "-c:v", "libx264", "-preset", vs.preset or "medium",
-        "-crf", "18", "-pix_fmt", "yuv420p",
+        "-crf", "18", "-maxrate", maxrate, "-bufsize", bufsize,
+        "-pix_fmt", "yuv420p",
         "-r", str(max(1, vs.fps)),
         "-shortest", "-t", f"{max(0.05, duration):.3f}",
         "-movflags", "+faststart",
