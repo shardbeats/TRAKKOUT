@@ -47,6 +47,8 @@ Source: "..\dist\TRAKKOUT.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\thirdparty\ffmpeg\ffmpeg.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
 Source: "..\thirdparty\ffmpeg\ffprobe.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\NOTICE.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\GOOGLE_SETUP.md"; DestDir: "{app}"; DestName: "GOOGLE_SETUP.txt"; Flags: ignoreversion
 
 [Icons]
