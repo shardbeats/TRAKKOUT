@@ -4,9 +4,7 @@
 
 **[Download for Windows](https://github.com/shardbeats/TRAKKOUT/releases/latest)** · **[All 6 tools](https://shardbeats.github.io/tools/)** · **[Free beat pack (WAV + stems)](https://shardbeats.github.io/landing/)**
 
-<!-- Screenshot: save the image as docs/screenshot.png, then uncomment this block
 <p align="center"><img src="docs/screenshot.png" alt="TRAKKOUT generating a 1080p YouTube video from a beat and its artwork" width="880"></p>
--->
 
 Free and open source (MIT). No account on my side, no telemetry — the upload goes to **your** YouTube channel, authenticated with your own Google credentials.
 
