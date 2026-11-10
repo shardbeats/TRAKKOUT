@@ -71,7 +71,6 @@ Download from the [latest release](https://github.com/shardbeats/TRAKKOUT/releas
 
 - **Installer** (`Setup_TRAKKOUT_<version>.exe`): per-user, no admin, FFmpeg included, instant startup.
 - **Portable ZIP** (`TRAKKOUT-portable-<version>.zip`): unzip once and run `TRAKKOUT\TRAKKOUT.exe`. FFmpeg is included and nothing is extracted on launch (<1 s startup).
-- **Single-file** (`TRAKKOUT.exe`): convenience only — PyInstaller re-extracts ~468 MB to `%TMP%` on every launch (~5 s). Prefer the ZIP.
 
 ### Quick start with `start.bat` (recommended)
 

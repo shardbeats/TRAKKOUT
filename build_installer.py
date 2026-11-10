@@ -5,16 +5,16 @@ Usage (from the project root):
 
 What it does:
   1. Reads the version from pyproject.toml.
-  2. Ensures dist\\TRAKKOUT.exe exists (runs build_exe.py if missing).
-  3. Downloads FFmpeg essentials (gyan.dev) once into thirdparty\\ffmpeg\\
+  2. Ensures the one-dir build exists (runs build_portable.py if missing).
+  3. Downloads FFmpeg essentials (gyan.dev) once into thirdparty\ffmpeg\
      and keeps only ffmpeg.exe + ffprobe.exe.
-  4. Compiles installer\\installer.iss with Inno Setup (ISCC) into
-     dist-installer\\Setup_TRAKKOUT_<version>.exe.
+  4. Compiles installer\installer.iss with Inno Setup (ISCC) into
+     dist-installer\Setup_TRAKKOUT_<version>.exe.
 
-The installer needs nothing on the user's PC: no Python (it travels inside
-TRAKKOUT.exe), no PATH tweaks (the app finds ffmpeg\\ next to the exe),
-no admin rights (per-user install). The user only connects their own
-Google account following GOOGLE_SETUP.txt.
+The installer needs nothing on the user's PC: no Python (inside the app
+folder), no PATH tweaks (FFmpeg travels in _internal\), no admin rights
+(per-user install). The user only connects their own Google account
+following GOOGLE_SETUP.txt.
 """
 import hashlib
 import re
@@ -161,7 +161,7 @@ def main() -> int:
     if "--check" in sys.argv:
         ok = True
         if not DIST_EXE.is_file():
-            print("TO-BUILD: dist\\TRAKKOUT.exe (run build_exe.py or rerun without --check).")
+            print("TO-BUILD: dist\\portable\\TRAKKOUT\\TRAKKOUT.exe (run build_portable.py or rerun without --check).")
         else:
             print(f"OK: {DIST_EXE} ({DIST_EXE.stat().st_size / 1e6:.1f} MB)")
         if not ((THIRD / "ffmpeg.exe").is_file() and (THIRD / "ffprobe.exe").is_file()):

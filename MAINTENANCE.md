@@ -38,7 +38,7 @@ trakkout/
 ├── app/utils/beat_names.py  Title/BPM/key parser from the file name.
 ├── app/resources/templates/ Presets (Free Standard.json). Recreated if missing.
 ├── start.bat                One-click first-run setup + launch (Windows).
-├── build_exe.py + TRAKKOUT.spec  Optional local exe build (PyInstaller, one-file).
+├── build_portable.py + TRAKKOUT.spec  One-dir build + portable ZIP (PyInstaller).
 └── requirements.txt         Dependencies pinned by range (>=).
 ```
 
@@ -103,21 +103,24 @@ directly; always through `VideoGenerator`, `YouTubeService` and
 - Square cropping uses `crop='min(iw,ih)':'min(iw,ih)'`, stable syntax
   for years; watch `gblur` and `drawtext` (the font is auto-detected in
   `find_system_font()`).
-- The app requires FFmpeg on PATH (or a custom path in **File > Settings**)
-  and fails with a clear message when missing. There is no portable
-  distribution: everyone runs from source via `start.bat`.
+- FFmpeg/FFprobe travel inside the app folder (`_internal\`). From source,
+  the app uses PATH or the path set in **File > Settings** and fails with a
+  clear message when missing.
 
-## 6. Local exe build (optional, not distributed)
+## 6. Builds (portable ZIP + installer)
 
 ```powershell
-venv\Scripts\python.exe build_exe.py        # builds dist\TRAKKOUT.exe
-venv\Scripts\python.exe build_exe.py --check  # prerequisites only
+python build_portable.py     # one-dir app + dist\TRAKKOUT-portable-<ver>.zip
+python build_installer.py    # installer from the one-dir build
 ```
 
-- Takes several minutes. The `No module named 'grpc'` warning during the
-  build is harmless (a submodule the app doesn't use).
-- `build/` and `dist/` are git-ignored and never committed: there is no
-  portable distribution, everyone runs from source.
+- `build_portable.py` runs PyInstaller in one-dir mode (`TRAKKOUT_ONEDIR=1`)
+  into `dist\portable\TRAKKOUT\` and zips it. One-dir starts in ~1 s.
+- One-file packaging (`build_exe.py`) still exists for local tests but is **not
+  distributed**: PyInstaller re-extracts ~468 MB to `%TMP%` on every launch.
+- `build_installer.py` packages the same one-dir folder (no duplicate FFmpeg).
+- The `No module named 'grpc'` warning during the build is harmless.
+- `build/`, `dist/`, `dist-installer/` are git-ignored and never committed.
 
 ## 7. Decided behaviors (not bugs)
 
