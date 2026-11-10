@@ -28,7 +28,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 THIRD = ROOT / "thirdparty" / "ffmpeg"
 ISS = ROOT / "installer" / "installer.iss"
-DIST_EXE = ROOT / "dist" / "TRAKKOUT.exe"
+DIST_EXE = ROOT / "dist" / "portable" / "TRAKKOUT" / "TRAKKOUT.exe"
 
 FFMPEG_ZIP_URL = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 
@@ -174,8 +174,8 @@ def main() -> int:
         return 0 if ok else 0
 
     if not DIST_EXE.is_file():
-        print("dist\\TRAKKOUT.exe missing: building it first (a few minutes)...")
-        rc = run([sys.executable, "build_exe.py"])
+        print("one-dir build missing: building it first (a few minutes)...")
+        rc = run([sys.executable, "build_portable.py"])
         if rc != 0 or not DIST_EXE.is_file():
             return rc or 1
 

@@ -3,7 +3,7 @@
 ## 1.1.0 - 2026-11-10
 Feature release: animated artwork, bitrate control and a fully portable exe.
 
-- **Portable exe now bundles FFmpeg** (ffmpeg.exe + ffprobe.exe inside the one-file exe): no PATH install, no Settings tweak. The installer no longer ships a duplicate copy.
+- **Fast startup:** the portable is now a one-dir ZIP (`TRAKKOUT-portable-<version>.zip`) with FFmpeg inside — unzip once, ~1 s startup, **no per-launch extraction** to `%TMP%`. The installer installs the same one-dir build, so installed startup is instant too. The single-file `TRAKKOUT.exe` is still offered for convenience (it re-extracts ~468 MB on every launch).
 - Animated artwork covers: GIF and MP4 loops are accepted as video cover — probed, validated and rendered as a looping background (`tests/test_artwork_animated.py`)
 - Output bitrate capped with VBV `maxrate`/`bufsize` per resolution, so renders stay within a predictable bitrate envelope
 - Artwork/media probing extended in `app/ffmpeg/probe.py`; file helpers and validators updated

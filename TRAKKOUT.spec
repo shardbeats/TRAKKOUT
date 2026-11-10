@@ -12,6 +12,7 @@
 # app/main.py + app/templates/presets.py fix (3).
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 from pathlib import Path
+import os
 
 block_cipher = None
 
@@ -114,27 +115,67 @@ a = Analysis(
     noarchive=False,
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name="TRAKKOUT",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=False,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    # console=False for release. If Google/YouTube still fails, rebuild once
-    # with console=True to see the real SSL/OAuth error in the terminal.
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon="trakkout.ico",
-)
+
+# Two packaging modes share this spec:
+#   default     one-file  -> dist\TRAKKOUT.exe  (re-extracts ~468 MB to %TMP%
+#                             on EVERY launch, ~5 s startup)
+#   ONEDIR=1    one-dir   -> dist\portable\TRAKKOUT\  (starts instantly; used
+#                             by the ZIP portable)
+_ONEDIR = os.environ.get("TRAKKOUT_ONEDIR") == "1"
+
+if _ONEDIR:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="TRAKKOUT",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon="trakkout.ico",
+    )
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        name="TRAKKOUT",
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name="TRAKKOUT",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        # console=False for release. If Google/YouTube still fails, rebuild once
+        # with console=True to see the real SSL/OAuth error in the terminal.
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+        icon="trakkout.ico",
+    )
