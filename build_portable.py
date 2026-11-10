@@ -1,8 +1,7 @@
 """Build the fast portable TRAKKOUT (one-dir inside a ZIP).
 
-Why: PyInstaller *one-file* re-extracts the whole payload to %TMP% on EVERY
-launch (~468 MB, ~5 s). The *one-dir* build starts instantly because nothing
-is extracted. The portable is therefore shipped as a ZIP the user unzips once:
+The portable is a one-dir app that starts instantly because nothing
+is extracted on launch. It is shipped as a ZIP the user unzips once:
 
     dist\\TRAKKOUT-portable-<version>.zip
         TRAKKOUT\\
@@ -37,7 +36,7 @@ def project_version() -> str:
 
 def run(cmd: list[str]) -> int:
     print("+", " ".join(cmd))
-    return subprocess.call(cmd, cwd=str(ROOT), env=dict(os.environ, TRAKKOUT_ONEDIR="1"))
+    return subprocess.call(cmd, cwd=str(ROOT))
 
 
 def main() -> int:

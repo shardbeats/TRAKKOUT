@@ -1,7 +1,7 @@
-# PyInstaller spec for the portable one-file TRAKKOUT.exe.
-# Build with: venv\Scripts\python.exe build_exe.py
-# (or: venv\Scripts\python.exe -m PyInstaller TRAKKOUT.spec)
-# Output: dist\TRAKKOUT.exe (FFmpeg bundled inside — fully portable, no PATH needed).
+# PyInstaller spec for TRAKKOUT (one-dir, instant startup).
+# Build with: python build_portable.py
+# Output: dist/portable/TRAKKOUT/  -> zip as dist/TRAKKOUT-portable-<ver>.zip
+#         dist-installer/Setup_TRAKKOUT_<ver>.exe  (via build_installer.py)
 #
 # NOTE on Google/YouTube: the exe failed to connect because (1) CA certificates
 # (certifi/httplib2) were not bundled, (2) several google/* hidden imports and
@@ -12,13 +12,11 @@
 # app/main.py + app/templates/presets.py fix (3).
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 from pathlib import Path
-import os
 
 block_cipher = None
 
-# FFmpeg must travel INSIDE the one-file exe so the portable needs nothing on
-# PATH: PyInstaller extracts these to sys._MEIPASS at launch and
-# app/ffmpeg/detect.py finds them there.
+# FFmpeg travels inside the app folder (_internal\) so the portable and the
+# installer need nothing on PATH; app/ffmpeg/detect.py also checks sys._MEIPASS.
 _FFMPEG_DIR = Path(SPECPATH) / "thirdparty" / "ffmpeg"
 _ffmpeg_bins: list[tuple[str, str]] = []
 for _name in ("ffmpeg.exe", "ffprobe.exe"):
@@ -115,67 +113,33 @@ a = Analysis(
     noarchive=False,
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
-# Two packaging modes share this spec:
-#   default     one-file  -> dist\TRAKKOUT.exe  (re-extracts ~468 MB to %TMP%
-#                             on EVERY launch, ~5 s startup)
-#   ONEDIR=1    one-dir   -> dist\portable\TRAKKOUT\  (starts instantly; used
-#                             by the ZIP portable)
-_ONEDIR = os.environ.get("TRAKKOUT_ONEDIR") == "1"
-
-if _ONEDIR:
-    exe = EXE(
-        pyz,
-        a.scripts,
-        [],
-        exclude_binaries=True,
-        name="TRAKKOUT",
-        debug=False,
-        bootloader_ignore_signals=False,
-        strip=False,
-        upx=False,
-        upx_exclude=[],
-        runtime_tmpdir=None,
-        console=False,
-        disable_windowed_traceback=False,
-        argv_emulation=False,
-        target_arch=None,
-        codesign_identity=None,
-        entitlements_file=None,
-        icon="trakkout.ico",
-    )
-    coll = COLLECT(
-        exe,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
-        strip=False,
-        upx=False,
-        upx_exclude=[],
-        name="TRAKKOUT",
-    )
-else:
-    exe = EXE(
-        pyz,
-        a.scripts,
-        a.binaries,
-        a.zipfiles,
-        a.datas,
-        [],
-        name="TRAKKOUT",
-        debug=False,
-        bootloader_ignore_signals=False,
-        strip=False,
-        upx=False,
-        upx_exclude=[],
-        runtime_tmpdir=None,
-        # console=False for release. If Google/YouTube still fails, rebuild once
-        # with console=True to see the real SSL/OAuth error in the terminal.
-        console=False,
-        disable_windowed_traceback=False,
-        argv_emulation=False,
-        target_arch=None,
-        codesign_identity=None,
-        entitlements_file=None,
-        icon="trakkout.ico",
-    )
+exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="TRAKKOUT",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon="trakkout.ico",
+)
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="TRAKKOUT",
+)
