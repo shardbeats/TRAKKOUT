@@ -1,5 +1,16 @@
 #  TRAKKOUT - Beat to YouTube Video Converter
 
+> **Turn a beat and its artwork into a 1080p MP4 ready for YouTube** — audio + cover to video with FFmpeg, then upload to your own channel with title/description/tags templates and scheduled publishing.
+
+**[Download for Windows](https://github.com/shardbeats/TRAKKOUT/releases/latest)** · **[All 6 tools](https://shardbeats.github.io/tools/)** · **[Free beat pack (WAV + stems)](https://shardbeats.github.io/landing/)**
+
+<!-- Screenshot: save the image as docs/screenshot.png, then uncomment this block
+<p align="center"><img src="docs/screenshot.png" alt="TRAKKOUT generating a 1080p YouTube video from a beat and its artwork" width="880"></p>
+-->
+
+Free and open source (MIT). No account on my side, no telemetry — the upload goes to **your** YouTube channel, authenticated with your own Google credentials.
+
+
 <div align="center">
   <img src="trakkout.ico" alt="TRAKKOUT Icon" width="100"/>
 </div>
@@ -281,3 +292,34 @@ Distributed under the MIT license for personal and commercial use.
 </div>
 
 **Made with ❤️ using Python + PySide6 + FFmpeg + YouTube Data API v3**
+
+## TRAKK SUITE
+
+Six free, offline tools for beatmakers. They are independent: install only what you need.
+
+| Tool | What it does |
+|---|---|
+| [TRAKKSTUDIO](https://github.com/shardbeats/TRAKKSTUDIO) | Organize, convert and normalize in a single window |
+| [TRAKKCONVERTER](https://github.com/shardbeats/TRAKKCONVERTER) | Sample libraries → WAV for the Roland SP-404MK2 |
+| [TRAKKNORMALIZER](https://github.com/shardbeats/TRAKKNORMALIZER) | Per-clip peak normalization for sample packs |
+| [TRAKKNAME](https://github.com/shardbeats/TRAKKNAME) | Beat title generator (EN/ES, 20 moods) |
+| **TRAKKOUT** | Beat + artwork → 1080p MP4 for YouTube |
+| [TRAKKLICENSE](https://github.com/shardbeats/TRAKKLICENSE) | Beat license contracts as PDF (EN/ES) |
+
+- **Website:** https://shardbeats.github.io/tools/
+- **Free beat pack (WAV + stems):** https://shardbeats.github.io/landing/
+- **Sound kits:** https://www.beatstars.com/shardbeats/sound-kits
+
+## FAQ
+
+**Is it free?** Yes. MIT licensed, free for personal and commercial use. The only limit is Google's own YouTube API quota.
+
+**Do I need a Google Cloud project?** Yes, once, for uploads. You create your own OAuth client and drop the JSON into `%APPDATA%\TRAKKOUT\`. The full walkthrough is under *Installation* above. If you only want the MP4 file and not the upload, skip it.
+
+**Does it upload my files anywhere?** No. The video is rendered locally. Just one exception, and it is opt-in: pressing **Upload to YouTube** sends the video to the channel you authenticated.
+
+**What does the video look like?** 1920x1080 MP4 from your audio plus cover artwork, auto-fitted with a crop or letterbox, with an optional blurred background.
+
+**Can I schedule uploads?** Yes. "Publish later" sends `status.publishAt`; YouTube requires those videos to start as private.
+
+**Can I template the metadata?** Yes, `{{title}}`, `{{bpm}}`, `{{key}}`, `{{purchase_url}}`, `{{tags}}` and more.
