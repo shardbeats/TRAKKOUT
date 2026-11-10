@@ -7,7 +7,7 @@
 ; Per-user install: no admin rights needed. Python NOT needed (inside the exe).
 
 #ifndef APP_VERSION
-  #define APP_VERSION "1.0.1"
+  #define APP_VERSION "1.1.0"
 #endif
 
 #define APP_NAME "TRAKKOUT"
