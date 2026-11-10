@@ -1,7 +1,7 @@
 # PyInstaller spec for the portable one-file TRAKKOUT.exe.
 # Build with: venv\Scripts\python.exe build_exe.py
 # (or: venv\Scripts\python.exe -m PyInstaller TRAKKOUT.spec)
-# Output: dist\TRAKKOUT.exe (FFmpeg still required on PATH, not bundled).
+# Output: dist\TRAKKOUT.exe (FFmpeg bundled inside — fully portable, no PATH needed).
 #
 # NOTE on Google/YouTube: the exe failed to connect because (1) CA certificates
 # (certifi/httplib2) were not bundled, (2) several google/* hidden imports and
@@ -11,8 +11,23 @@
 # misses binaries and fails silently on google.* namespace packages);
 # app/main.py + app/templates/presets.py fix (3).
 from PyInstaller.utils.hooks import collect_all, copy_metadata
+from pathlib import Path
 
 block_cipher = None
+
+# FFmpeg must travel INSIDE the one-file exe so the portable needs nothing on
+# PATH: PyInstaller extracts these to sys._MEIPASS at launch and
+# app/ffmpeg/detect.py finds them there.
+_FFMPEG_DIR = Path(SPECPATH) / "thirdparty" / "ffmpeg"
+_ffmpeg_bins: list[tuple[str, str]] = []
+for _name in ("ffmpeg.exe", "ffprobe.exe"):
+    _p = _FFMPEG_DIR / _name
+    if not _p.is_file():
+        raise SystemExit(
+            f"ERROR: missing {_p}. Run `python build_installer.py --check` "
+            "(or build_installer.py) once to stage FFmpeg into thirdparty/ffmpeg."
+        )
+    _ffmpeg_bins.append((str(_p), "."))
 
 all_binaries: list[tuple[str, str]] = []
 all_datas: list[tuple[str, str]] = []
@@ -79,7 +94,7 @@ all_hidden += [
 a = Analysis(
     ["app\\main.py"],
     pathex=["."],
-    binaries=all_binaries,
+    binaries=all_binaries + _ffmpeg_bins,
     datas=[
         ("app\\resources", "app\\resources"),
         ("app\\ui\\style.qss", "app\\ui"),

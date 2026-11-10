@@ -4,7 +4,9 @@ Usage (from the project root):
     venv\\Scripts\\python.exe build_exe.py [--check]
 
 - Installs PyInstaller in the venv if missing.
-- Builds dist\\TRAKKOUT.exe from TRAKKOUT.spec (one file, windowed).
+- Stages FFmpeg into thirdparty\\ffmpeg (downloads once if missing).
+- Builds dist\\TRAKKOUT.exe from TRAKKOUT.spec (one file, windowed)
+  with FFmpeg bundled inside, so the portable needs nothing on PATH.
 - --check only verifies prerequisites without compiling.
 """
 import shutil
@@ -33,8 +35,16 @@ def main() -> int:
             print(f"ERROR: missing {needed}")
             return 1
     if shutil.which("ffmpeg") is None:
-        print("WARNING: ffmpeg not found on PATH. The exe will still build, "
-              "but video generation needs FFmpeg installed.")
+        print("NOTE: ffmpeg not on PATH. Not needed: FFmpeg is bundled in the exe.")
+
+    # FFmpeg travels INSIDE the exe (portable). Stage it before packaging.
+    from build_installer import THIRD, ensure_ffmpeg
+    have_ff = (THIRD / "ffmpeg.exe").is_file() and (THIRD / "ffprobe.exe").is_file()
+    if "--check" in sys.argv:
+        print(f"{'OK' if have_ff else 'TO-FETCH'}: FFmpeg in {THIRD}")
+    elif not have_ff and ensure_ffmpeg() != 0:
+        print("ERROR: could not stage FFmpeg into thirdparty/ffmpeg.")
+        return 1
     rc = run([python, "-m", "PyInstaller", "--version"])
     if rc != 0:
         print("Installing PyInstaller...")

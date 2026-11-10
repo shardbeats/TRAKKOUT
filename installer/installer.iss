@@ -1,9 +1,8 @@
 ; TRAKKOUT installer for inexpert users (Inno Setup 6).
 ; Compiled by build_installer.py, which passes /DAPP_VERSION=x.y.z.
 ; Layout installed:
-;   {app}\TRAKKOUT.exe
-;   {app}\ffmpeg\ffmpeg.exe + ffprobe.exe   (auto-detected, no PATH needed)
-;   {app}\GOOGLE_SETUP.txt                  (how to connect their YouTube)
+;   {app}\TRAKKOUT.exe         (FFmpeg bundled inside the exe)
+;   {app}\GOOGLE_SETUP.txt     (how to connect their YouTube)
 ; Per-user install: no admin rights needed. Python NOT needed (inside the exe).
 
 #ifndef APP_VERSION
@@ -44,8 +43,6 @@ Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; Gr
 
 [Files]
 Source: "..\dist\TRAKKOUT.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\thirdparty\ffmpeg\ffmpeg.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
-Source: "..\thirdparty\ffmpeg\ffprobe.exe"; DestDir: "{app}\ffmpeg"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\NOTICE.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "..\THIRD-PARTY-NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist

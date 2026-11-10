@@ -1,13 +1,14 @@
 # Changelog
 
 ## 1.1.0 - 2026-11-10
-Feature release: animated artwork and bitrate control.
+Feature release: animated artwork, bitrate control and a fully portable exe.
 
+- **Portable exe now bundles FFmpeg** (ffmpeg.exe + ffprobe.exe inside the one-file exe): no PATH install, no Settings tweak. The installer no longer ships a duplicate copy.
 - Animated artwork covers: GIF and MP4 loops are accepted as video cover — probed, validated and rendered as a looping background (`tests/test_artwork_animated.py`)
 - Output bitrate capped with VBV `maxrate`/`bufsize` per resolution, so renders stay within a predictable bitrate envelope
 - Artwork/media probing extended in `app/ffmpeg/probe.py`; file helpers and validators updated
 - NOTICE.md + THIRD-PARTY-NOTICES.md now shipped in the installer (MIT kept)
-- 140 tests passing
+- 144 tests passing
 
 ## 1.0.3 - 2026-10-13
 CPU/stability hardening.

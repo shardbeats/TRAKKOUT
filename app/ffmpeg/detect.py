@@ -38,20 +38,29 @@ def _popen(cmd: list[str]) -> subprocess.Popen:
 
 
 def _bundled_tool_dirs() -> list[Path]:
-    """Dirs searched BEFORE PATH when frozen (installer puts FFmpeg here).
+    """Dirs searched BEFORE PATH when frozen.
 
-    Layout created by installer/installer.iss:
-        TRAKKOUT.exe
-        ffmpeg\\ffmpeg.exe + ffprobe.exe
-    Also accepts the tools directly next to the exe or in bin\\.
+    Two shipped layouts are supported:
+      - Installer / sidecar: ffmpeg\\ next to TRAKKOUT.exe.
+      - One-file portable: the binaries are bundled inside the exe and
+        extracted to sys._MEIPASS at launch.
     """
     if not (getattr(sys, "frozen", False) or hasattr(sys, "_MEIPASS")):
         return []
+    dirs: list[Path] = []
     try:
         exe_dir = Path(sys.executable).resolve().parent
+        dirs += [exe_dir, exe_dir / "ffmpeg", exe_dir / "bin"]
     except Exception:
-        return []
-    return [exe_dir, exe_dir / "ffmpeg", exe_dir / "bin"]
+        pass
+    mei = getattr(sys, "_MEIPASS", None)
+    if mei:
+        try:
+            mei_dir = Path(mei)
+            dirs += [mei_dir, mei_dir / "ffmpeg"]
+        except Exception:
+            pass
+    return dirs
 
 
 def resolve_tool(name: str, ffmpeg_path: str, ffprobe_path: str) -> str:

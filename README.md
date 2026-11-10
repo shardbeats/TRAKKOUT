@@ -48,7 +48,7 @@ Beat/Audio + Artwork → FFmpeg → MP4 (1920x1080) → Select Channel → Uploa
 - **RAM**: 8 GB minimum, 16 GB recommended
 - **Disk Space**: ~1 GB free (app + libraries ≈ 800 MB) + audio/artwork file size
 - **Python**: 3.11+ (with `Add to PATH` enabled)
-- **FFmpeg/FFprobe**: installed locally or configurable via **File > Settings**
+- **FFmpeg/FFprobe**: bundled inside the portable exe and the installer (from source: install locally or set it in **File > Settings**)
 
 ### Dependencies:
 ```bash
