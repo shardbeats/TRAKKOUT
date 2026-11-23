@@ -1,4 +1,5 @@
 [project]
+license = { text = "GPL-3.0-only" }
 name = "trakkout"
 version = "1.1.0"
 description = "Turn beats into videos and publish them to YouTube"

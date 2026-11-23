@@ -6,7 +6,7 @@
 
 <p align="center"><img src="docs/screenshot.png" alt="TRAKKOUT generating a 1080p YouTube video from a beat and its artwork" width="880"></p>
 
-Free and open source (MIT). No account on my side, no telemetry — the upload goes to **your** YouTube channel, authenticated with your own Google credentials.
+Free and open source (GPL-3.0-only). No account on my side, no telemetry — the upload goes to **your** YouTube channel, authenticated with your own Google credentials.
 
 
 <div align="center">
@@ -288,7 +288,7 @@ templates, settings, SQLite stores, YouTube error mapping and OAuth config valid
 ## 📄 License
 
 Copyright © 2026 - TRAKKOUT  
-Distributed under the MIT license for personal and commercial use.
+Distributed under the GPL-3.0-only license for personal and commercial use.
 
 ---
 
@@ -317,7 +317,7 @@ Six free, offline tools for beatmakers. They are independent: install only what 
 
 ## FAQ
 
-**Is it free?** Yes. MIT licensed, free for personal and commercial use. The only limit is Google's own YouTube API quota.
+**Is it free?** Yes. GPL-3.0-only licensed, free for personal and commercial use. The only limit is Google's own YouTube API quota.
 
 **Do I need a Google Cloud project?** Yes, once, for uploads. You create your own OAuth client and drop the JSON into `%APPDATA%\TRAKKOUT\`. The full walkthrough is under *Installation* above. If you only want the MP4 file and not the upload, skip it.
 

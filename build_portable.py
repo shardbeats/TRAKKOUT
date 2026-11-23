@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SPEC = ROOT / "TRAKKOUT.spec"
 EXE_DIR = ROOT / "dist" / "portable" / "TRAKKOUT"
-DOCS = ("LICENSE", "NOTICE.md", "THIRD-PARTY-NOTICES.md", "GOOGLE_SETUP.md")
+DOCS = ("LICENSE", "LICENSING.md", "TRADEMARK.md", "NOTICE.md", "THIRD-PARTY-NOTICES.md", "GOOGLE_SETUP.md")
 
 
 def project_version() -> str:

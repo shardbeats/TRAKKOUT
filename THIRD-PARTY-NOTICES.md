@@ -1,6 +1,6 @@
 # THIRD-PARTY-NOTICES — TRAKKOUT
 
-TRAKKOUT code is MIT (`LICENSE`). The components below keep their
+TRAKKOUT code is GPL-3.0-only (`LICENSE`, see `LICENSING.md`; versions published before 2026-11-23 remain MIT). The components below keep their
 own licenses, in source runs AND inside the frozen exe/installer.
 
 | Component | License | Notes |
@@ -20,6 +20,6 @@ and must never be committed.
 Build tools only: PyInstaller (GPLv2 + bootloader exception),
 Inno Setup 6 (free), pytest/pytest-bdd (MIT, dev only).
 
-Compliance: ship `LICENSE` + `NOTICE.md` + this file (installer
+Compliance: ship `LICENSE` + `LICENSING.md` + `LICENSING.md` + `NOTICE.md` + this file (installer
 already ships `LICENSE`; add these two the same way). LGPL/Apache
 texts via the links above.

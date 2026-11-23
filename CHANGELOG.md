@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased] — Relicense to GPL-3.0-only
+- License change (not retroactive): from commit f9d96fd21ac8e7b779e867b8126a2077d5098adb
+  (2026-11-23) onward the code is GPL-3.0-only (`LICENSE`, `LICENSING.md`).
+  Versions up to and including v1.1.0 (2026-11-10) remain MIT.
+- Trademark: forks must rebrand, see `TRADEMARK.md` (+ GPLv3 §7(e)).
+- About box, installer metadata, and compliance docs updated. No code changes.
+
 ## 1.1.0 - 2026-11-10
 Feature release: animated artwork, bitrate control and a fully portable exe.
 
